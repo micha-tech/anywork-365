@@ -96,6 +96,10 @@ export interface JobPostPayload {
   budget: number
   city: string
   timeline: JobTimeline
+  businessName: string
+  businessAddress: string
+  jobType: JobType
+  closingDate: string
 }
 
 // ─── Applications ─────────────────────────────────────────────────────────────

@@ -4,11 +4,11 @@ import { JOB_CATEGORIES } from '@/types'
 export const jobPostSchema = z.object({
   title: z
     .string()
-    .min(10, 'Title must be at least 10 characters')
+    .min(5, 'Title must be at least 5 characters')
     .max(120, 'Title is too long'),
   description: z
     .string()
-    .min(30, 'Please provide more detail (at least 30 characters)')
+    .min(10, 'Please provide more detail (at least 10 characters)')
     .max(2000, 'Description is too long'),
   category: z.enum(
     JOB_CATEGORIES as [string, ...string[]],
@@ -20,6 +20,10 @@ export const jobPostSchema = z.object({
     .max(100_000_000, 'Budget seems too high'),
   city: z.string().min(1, 'Please select a city'),
   timeline: z.enum(['urgent', 'this_week', 'this_month', 'flexible']),
+  businessName: z.string().min(2, 'Business name is required'),
+  businessAddress: z.string().min(5, 'Business address is required'),
+  jobType: z.enum(['full-time', 'contract']),
+  closingDate: z.string().min(1, 'Closing date is required'),
 })
 
 export const jobApplicationSchema = z.object({

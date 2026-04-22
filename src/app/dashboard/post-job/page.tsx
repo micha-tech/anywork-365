@@ -44,13 +44,56 @@ export default function PostJobPage() {
       <div className="card w-full max-w-2xl">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="form-group">
+            <label className="label">Business Name *</label>
+            <input
+              {...register('businessName')}
+              className={`input-field ${errors.businessName ? 'border-red-400' : ''}`}
+              placeholder="e.g. Bright Spark Electrical"
+            />
+            {errors.businessName && <p className="mt-1.5 text-xs text-red-500">{errors.businessName.message}</p>}
+          </div>
+
+          <div className="form-group">
             <label className="label">Job Title *</label>
             <input
               {...register('title')}
               className={`input-field ${errors.title ? 'border-red-400' : ''}`}
-              placeholder="e.g. Electrical wiring for 3-bedroom flat in Lekki"
+              placeholder="e.g. Electrician"
             />
             {errors.title && <p className="mt-1.5 text-xs text-red-500">{errors.title.message}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="label">Business Address *</label>
+            <input
+              {...register('businessAddress')}
+              className={`input-field ${errors.businessAddress ? 'border-red-400' : ''}`}
+              placeholder="e.g. 15 Adeola Odeku Street, Victoria Island, Lagos"
+            />
+            {errors.businessAddress && <p className="mt-1.5 text-xs text-red-500">{errors.businessAddress.message}</p>}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="form-group">
+              <label className="label">Job Type *</label>
+              <select
+                {...register('jobType')}
+                className={`input-field appearance-none ${errors.jobType ? 'border-red-400' : ''}`}
+              >
+                <option value="full-time">Full-time</option>
+                <option value="contract">Contract</option>
+              </select>
+              {errors.jobType && <p className="mt-1.5 text-xs text-red-500">{errors.jobType.message}</p>}
+            </div>
+            <div className="form-group">
+              <label className="label">Closing Date *</label>
+              <input
+                {...register('closingDate')}
+                type="date"
+                className={`input-field ${errors.closingDate ? 'border-red-400' : ''}`}
+              />
+              {errors.closingDate && <p className="mt-1.5 text-xs text-red-500">{errors.closingDate.message}</p>}
+            </div>
           </div>
 
           <div className="form-group">
@@ -69,14 +112,13 @@ export default function PostJobPage() {
             <label className="label">Description *</label>
             <textarea
               {...register('description')}
-              rows={5}
+              rows={4}
               className={`input-field resize-y ${errors.description ? 'border-red-400' : ''}`}
-              placeholder="Describe the job in detail — what needs to be done, materials, timeline..."
+              placeholder="Describe the job in detail..."
             />
             {errors.description && <p className="mt-1.5 text-xs text-red-500">{errors.description.message}</p>}
           </div>
 
-          {/* Budget + Location — stack on mobile */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="form-group">
               <label className="label">Budget (₦) *</label>

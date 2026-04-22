@@ -66,6 +66,10 @@ export async function POST(req: NextRequest) {
       status: 'open',
       posterId: session.id,
       posterName: `${session.firstName} ${session.lastName}`,
+      businessName: parsed.data.businessName || '',
+      businessAddress: parsed.data.businessAddress || '',
+      jobType: parsed.data.jobType || 'full-time',
+      closingDate: parsed.data.closingDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       applicationCount: 0,
       createdAt: new Date().toISOString(),
     }
