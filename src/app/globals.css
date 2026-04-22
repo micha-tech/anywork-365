@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ──────────────────────────────────── */
+:root {
+  --green:        #0F4F4A;
+  --green-hover:  #1F6F68;
+  --green-active: #0a3835;
+  --green-light:  #E3ECEA;
+  --bg:           #E3ECEA;
+  --card:         #FFFFFF;
+  --border:       #C2D4D2;
+  --text-primary: #0a2422;
+  --text-muted:   #4a6866;
+}
+
+/* ─── Base ────────────────────────────────────────────── */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .bg-grid-fade {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+/* ─── Reusable Component Classes ─────────────────────── */
+@layer components {
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-brand-primary hover:bg-brand-hover active:bg-brand-active
+           text-white font-medium text-sm
+           px-4 py-2.5 rounded-xl min-h-[44px]
+           transition-colors duration-150
+           disabled:opacity-50 disabled:pointer-events-none
+           select-none;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2
+           border border-brand-primary text-brand-primary
+           hover:bg-brand-light active:bg-brand-light
+           font-medium text-sm
+           px-4 py-2.5 rounded-xl min-h-[44px]
+           transition-colors duration-150
+           disabled:opacity-50 disabled:pointer-events-none
+           select-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           border border-ui-border text-text-secondary
+           hover:border-brand-primary hover:text-brand-primary
+           active:bg-brand-light
+           font-medium text-sm
+           px-4 py-2.5 rounded-xl min-h-[44px]
+           transition-colors duration-150
+           select-none;
+  }
+
+  .input-field {
+    @apply w-full px-3.5 py-3
+           text-sm text-text-primary
+           bg-white border border-ui-border rounded-xl
+           outline-none placeholder:text-text-secondary
+           focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10
+           transition-all duration-150
+           min-h-[44px];
+  }
+
+  .card {
+    @apply bg-ui-card border border-ui-border rounded-2xl p-4 sm:p-6;
+  }
+
+  .card-sm {
+    @apply bg-ui-card border border-ui-border rounded-xl p-3 sm:p-4;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-green {
+    @apply badge bg-brand-light text-brand-active;
+  }
+
+  .badge-gray {
+    @apply badge bg-gray-100 text-text-secondary;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-50 text-blue-700;
+  }
+
+  .badge-red {
+    @apply badge bg-red-50 text-red-600;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-text-primary mb-1.5;
+  }
+
+  .form-group {
+    @apply mb-4;
+  }
+
+  .section-title {
+    @apply font-display text-xl sm:text-2xl font-semibold text-text-primary;
+  }
+
+  .section-subtitle {
+    @apply text-sm text-text-secondary mt-1 mb-6 sm:mb-8;
+  }
+
+  /* Mobile bottom nav safe area */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}

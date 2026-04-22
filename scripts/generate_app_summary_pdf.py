@@ -1,0 +1,266 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+import re
+from textwrap import dedent
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TMP_DIR = ROOT / "tmp" / "pdfs"
+OUT_DIR = ROOT / "output" / "pdf"
+HTML_PATH = TMP_DIR / "anywork365_app_summary.html"
+PDF_PATH = OUT_DIR / "anywork365_app_summary.pdf"
+PNG_PATH = TMP_DIR / "anywork365_app_summary.png"
+CHROME_PATH = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+
+
+HTML = dedent(
+    """\
+    <!doctype html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Anywork365 App Summary</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 0.34in 0.42in;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+          margin: 0;
+          font-family: "Segoe UI", Arial, sans-serif;
+          color: #153127;
+          background: #f3f7f2;
+        }
+
+        .page {
+          width: 100%;
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at top right, #d8f0da 0, #d8f0da 18%, transparent 19%),
+            linear-gradient(180deg, #ffffff 0%, #f8fbf7 100%);
+          border: 1px solid #d5e4d7;
+          border-radius: 16px;
+          padding: 18px 20px 16px;
+        }
+
+        .eyebrow {
+          display: inline-block;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #1f7a38;
+          background: #e7f5ea;
+          border-radius: 999px;
+          padding: 5px 9px;
+          margin-bottom: 8px;
+        }
+
+        h1 {
+          margin: 0 0 4px;
+          font-size: 24px;
+          line-height: 1.05;
+          color: #10261e;
+        }
+
+        .subhead {
+          margin: 0 0 12px;
+          font-size: 10px;
+          color: #4a6155;
+        }
+
+        .grid {
+          display: grid;
+          grid-template-columns: 1.1fr 0.9fr;
+          gap: 12px;
+        }
+
+        .section {
+          margin-bottom: 10px;
+        }
+
+        h2 {
+          margin: 0 0 5px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #1b5e20;
+        }
+
+        p {
+          margin: 0;
+          font-size: 10px;
+          line-height: 1.4;
+          color: #20362b;
+        }
+
+        ul {
+          margin: 4px 0 0 14px;
+          padding: 0;
+        }
+
+        li {
+          margin: 0 0 4px;
+          font-size: 10px;
+          line-height: 1.32;
+          color: #20362b;
+        }
+
+        .card {
+          background: rgba(255, 255, 255, 0.86);
+          border: 1px solid #dbe7dc;
+          border-radius: 12px;
+          padding: 10px 11px 9px;
+        }
+
+        .stack {
+          display: grid;
+          gap: 10px;
+        }
+
+        .run-steps li {
+          margin-bottom: 3px;
+        }
+
+        .footer {
+          margin-top: 8px;
+          padding-top: 7px;
+          border-top: 1px solid #d7e4d8;
+          font-size: 8.5px;
+          color: #557061;
+        }
+
+        code {
+          font-family: Consolas, "Courier New", monospace;
+          font-size: 9px;
+          background: #eff5ef;
+          padding: 1px 4px;
+          border-radius: 4px;
+        }
+      </style>
+    </head>
+    <body>
+      <main class="page">
+        <div class="eyebrow">Repo-Based App Summary</div>
+        <h1>Anywork365</h1>
+        <p class="subhead">One-page evidence-backed summary generated from the repository only.</p>
+
+        <div class="grid">
+          <section class="stack">
+            <div class="card section">
+              <h2>What It Is</h2>
+              <p>Anywork365 is a Next.js marketplace MVP for Nigeria that connects clients with artisans, technicians, engineers, and other service professionals. The repo includes discovery flows, job posting, authenticated dashboards, profile management, wallet operations, and payment hooks.</p>
+            </div>
+
+            <div class="card section">
+              <h2>Who It's For</h2>
+              <p>Primary persona: Nigerian clients who need to find and hire skilled service professionals. The app also has dedicated signup, profile, and withdrawal flows for professionals.</p>
+            </div>
+
+            <div class="card section">
+              <h2>What It Does</h2>
+              <ul>
+                <li>Lists professionals with search, city filters, skill/category filters, and detail pages.</li>
+                <li>Lists jobs with search/filtering, detail views, and a protected job-posting flow.</li>
+                <li>Supports signup/login for <code>client</code> and <code>professional</code> roles.</li>
+                <li>Stores sessions in an <code>httpOnly</code> JWT cookie and protects dashboard routes with middleware.</li>
+                <li>Lets users update profile data, skills, city, bio, and upload avatar images.</li>
+                <li>Shows wallet balances, escrow, transaction history, and bank account status.</li>
+                <li>Integrates Paystack flows for funding, bank verification, payment verification, and withdrawals.</li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="stack">
+            <div class="card section">
+              <h2>How It Works</h2>
+              <ul>
+                <li><strong>UI:</strong> Next.js App Router pages in <code>src/app</code> render landing, listings, auth, and dashboard screens with shared React/Tailwind components.</li>
+                <li><strong>API:</strong> Route handlers in <code>src/app/api</code> validate requests, read session state, and return JSON for auth, users, jobs, uploads, and wallet actions.</li>
+                <li><strong>Auth:</strong> <code>src/lib/auth.ts</code> signs HS256 JWTs into the <code>aw365_session</code> cookie; <code>src/middleware.ts</code> redirects unauthenticated dashboard access.</li>
+                <li><strong>Data:</strong> The repo uses mock arrays plus in-memory stores/maps for users, jobs, wallets, transactions, and withdrawals. Persistent database implementation: <strong>Not found in repo.</strong></li>
+                <li><strong>Payments + files:</strong> Paystack server utilities manage bank lookup, payment init/verify, and transfers; avatar uploads are written to <code>public/uploads</code>.</li>
+              </ul>
+            </div>
+
+            <div class="card section">
+              <h2>How To Run</h2>
+              <ul class="run-steps">
+                <li><code>cd anywork365</code></li>
+                <li><code>npm install</code></li>
+                <li>Copy <code>.env.example</code> to <code>.env.local</code> and keep at least local app/JWT values. Paystack features need valid Paystack keys.</li>
+                <li><code>npm run dev</code></li>
+                <li>Open <code>http://localhost:3000</code></li>
+                <li>Demo login in repo: <code>demo@anywork365.com</code> / <code>Demo1234</code></li>
+              </ul>
+            </div>
+
+            <div class="footer">
+              Evidence used: README, package.json, App Router pages, API routes, middleware, auth helpers, mock data, wallet logic, Paystack helpers, and .env.example.
+            </div>
+          </section>
+        </div>
+      </main>
+    </body>
+    </html>
+    """
+)
+
+
+def run(args: list[str]) -> None:
+    subprocess.run(args, check=True)
+
+
+def get_pdf_page_count(pdf_path: Path) -> int:
+    data = pdf_path.read_bytes()
+    return len(re.findall(rb"/Type\s*/Page\b", data))
+
+
+def main() -> None:
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    HTML_PATH.write_text(HTML, encoding="utf-8")
+
+    if not CHROME_PATH.exists():
+      raise SystemExit(f"Chrome not found at {CHROME_PATH}")
+
+    run(
+        [
+            str(CHROME_PATH),
+            "--headless=new",
+            "--no-sandbox",
+            "--disable-gpu",
+            f"--print-to-pdf={PDF_PATH}",
+            str(HTML_PATH.resolve().as_uri()),
+        ]
+    )
+
+    run(
+        [
+            str(CHROME_PATH),
+            "--headless=new",
+            "--no-sandbox",
+            "--disable-gpu",
+            "--window-size=1240,1754",
+            f"--screenshot={PNG_PATH}",
+            str(HTML_PATH.resolve().as_uri()),
+        ]
+    )
+
+    page_count = get_pdf_page_count(PDF_PATH)
+    if page_count != 1:
+        raise SystemExit(f"Expected 1 page, found {page_count}")
+
+    print(PDF_PATH)
+    print(PNG_PATH)
+
+
+if __name__ == "__main__":
+    main()
