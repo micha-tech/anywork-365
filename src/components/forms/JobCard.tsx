@@ -11,10 +11,7 @@ interface JobCardProps {
 export function JobCard({ job, showApply = true }: JobCardProps) {
   return (
     <div className="card hover:border-brand-primary transition-colors">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-medium text-brand-primary">
-          {job.category}
-        </span>
+      <div className="flex items-start justify-end gap-2 mb-2">
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
           job.jobType === 'full-time' 
             ? 'bg-blue-100 text-blue-700' 
