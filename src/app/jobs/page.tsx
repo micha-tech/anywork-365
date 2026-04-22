@@ -42,7 +42,6 @@ export default async function JobsPage({ searchParams }: Props) {
             name="search"
             defaultValue={search}
             className="input-field w-full"
-            placeholder="Search jobs by title or keyword..."
           />
           <div className="flex gap-2">
             <select name="category" defaultValue={category} className="input-field flex-1 appearance-none">

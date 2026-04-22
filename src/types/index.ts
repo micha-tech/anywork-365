@@ -68,6 +68,7 @@ export type JobCategory =
 export type JobStatus = 'open' | 'in_progress' | 'completed' | 'cancelled'
 
 export type JobTimeline = 'urgent' | 'this_week' | 'this_month' | 'flexible'
+export type JobType = 'full-time' | 'contract'
 
 export interface Job {
   id: string
@@ -80,6 +81,10 @@ export interface Job {
   timeline: JobTimeline
   posterId: string
   posterName: string
+  businessName: string
+  businessAddress: string
+  jobType: JobType
+  closingDate: string
   applicationCount: number
   createdAt: string
 }
