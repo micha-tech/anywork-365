@@ -172,50 +172,76 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-primary">
-                Career
+                Featured
               </p>
               <h2 className="mt-1 font-display text-xl sm:text-2xl font-semibold text-text-primary">
-                Browse Jobs
+                Top Rated Vendors
               </h2>
             </div>
-            <Link href="/jobs" className="text-sm font-medium text-brand-primary hover:underline">
+            <Link href="/professionals" className="text-sm font-medium text-brand-primary hover:underline">
               View all →
             </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {latestJobs.map((job) => (
+            {featuredVendors.map((vendor, _idx) => (
               <Link
-                key={job.id}
-                href={`/jobs/${job.id}`}
+                key={vendor.id}
+                href={`/professionals/${vendor.id}`}
                 className="card hover:border-brand-primary transition-all hover:-translate-y-0.5"
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-medium text-brand-primary">
-                    {job.category}
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    job.jobType === 'full-time' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-purple-100 text-purple-700'
-                  }`}>
-                    {job.jobType === 'full-time' ? 'Full-time' : 'Contract'}
+                <div className="flex items-start gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full bg-brand-primary flex items-center justify-center text-white font-semibold text-lg">
+                      {getInitials(vendor.firstName, vendor.lastName)}
+                    </div>
+                    {vendor.isVerified && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-text-primary truncate">{vendor.firstName} {vendor.lastName}</h3>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-sm text-text-secondary">{vendor.city}</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={(e) => toggleFavorite(e, vendor.id)}
+                    className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    <svg 
+                      className={`w-5 h-5 ${favorites.includes(vendor.id) ? 'text-red-500 fill-current' : 'text-gray-400'}`} 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-brand-light px-2 py-0.5 text-xs font-medium text-brand-primary">
+                    {vendor.skills?.[0]}
                   </span>
                 </div>
-                <h3 className="font-medium text-text-primary line-clamp-1 mb-1">{job.title}</h3>
-                <p className="text-sm text-text-secondary line-clamp-1 mb-2">{job.businessName}</p>
-                <div className="flex items-center gap-1 text-xs text-text-secondary mb-2">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="line-clamp-1">{job.businessAddress}</span>
-                </div>
-                <div className="flex items-center justify-between pt-3 border-t border-ui-border">
-                  <span className="text-xs text-text-secondary">
-                    Closes: {new Date(job.closingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
-                  <span className="text-xs text-text-secondary">{job.applicationCount} applicants</span>
+
+                <div className="mt-3 flex items-center justify-between">
+                  <StarRating rating={Math.round(vendor.rating || 4)} />
+                  <button 
+                    onClick={(e) => { e.preventDefault() }}
+                    className="text-sm text-brand-primary hover:underline"
+                  >
+                    {vendor.reviewCount} reviews
+                  </button>
                 </div>
               </Link>
             ))}
@@ -287,76 +313,50 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-primary">
-                Featured
+                Career
               </p>
               <h2 className="mt-1 font-display text-xl sm:text-2xl font-semibold text-text-primary">
-                Top Rated Vendors
+                Browse Jobs
               </h2>
             </div>
-            <Link href="/professionals" className="text-sm font-medium text-brand-primary hover:underline">
+            <Link href="/jobs" className="text-sm font-medium text-brand-primary hover:underline">
               View all →
             </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredVendors.map((vendor, idx) => (
+            {latestJobs.map((job) => (
               <Link
-                key={vendor.id}
-                href={`/professionals/${vendor.id}`}
+                key={job.id}
+                href={`/jobs/${job.id}`}
                 className="card hover:border-brand-primary transition-all hover:-translate-y-0.5"
               >
-                <div className="flex items-start gap-3">
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-brand-primary flex items-center justify-center text-white font-semibold text-lg">
-                      {getInitials(vendor.firstName, vendor.lastName)}
-                    </div>
-                    {vendor.isVerified && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-text-primary truncate">{vendor.firstName} {vendor.lastName}</h3>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span className="text-sm text-text-secondary">{vendor.city}</span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={(e) => toggleFavorite(e, vendor.id)}
-                    className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <svg 
-                      className={`w-5 h-5 ${favorites.includes(vendor.id) ? 'text-red-500 fill-current' : 'text-gray-400'}`} 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-brand-light px-2 py-0.5 text-xs font-medium text-brand-primary">
-                    {vendor.skills?.[0]}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-medium text-brand-primary">
+                    {job.category}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    job.jobType === 'full-time' 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {job.jobType === 'full-time' ? 'Full-time' : 'Contract'}
                   </span>
                 </div>
-
-                <div className="mt-3 flex items-center justify-between">
-                  <StarRating rating={Math.round(vendor.rating || 4)} />
-                  <button 
-                    onClick={(e) => { e.preventDefault() }}
-                    className="text-sm text-brand-primary hover:underline"
-                  >
-                    {vendor.reviewCount} reviews
-                  </button>
+                <h3 className="font-medium text-text-primary line-clamp-1 mb-1">{job.title}</h3>
+                <p className="text-sm text-text-secondary line-clamp-1 mb-2">{job.businessName}</p>
+                <div className="flex items-center gap-1 text-xs text-text-secondary mb-2">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="line-clamp-1">{job.businessAddress}</span>
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-ui-border">
+                  <span className="text-xs text-text-secondary">
+                    Closes: {new Date(job.closingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  <span className="text-xs text-text-secondary">{job.applicationCount} applicants</span>
                 </div>
               </Link>
             ))}
