@@ -8,6 +8,8 @@ export interface User {
   lastName: string
   email: string
   phone?: string
+  countryCode?: string
+  nin?: string
   role: UserRole
   city: string
   bio?: string

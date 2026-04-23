@@ -55,8 +55,22 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,79,74,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,214,102,0.22),transparent_26%),linear-gradient(180deg,#f8fbfa_0%,#eef4f2_52%,#e5efed_100%)]" />
 
-        <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.95fr] lg:px-8 lg:py-16">
-          <div className="max-w-xl">
+        <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1fr] lg:px-8 lg:py-16">
+          <div className="flex justify-center lg:justify-start order-1 lg:order-1">
+            <div className="relative w-full max-w-[480px]">
+              <div className="absolute inset-x-10 bottom-4 top-8 rounded-[44px] bg-[radial-gradient(circle,rgba(15,79,74,0.14),transparent_68%)] blur-3xl" />
+              <Image
+                src="/phone-hand.webp"
+                alt="Anywork365 mobile homepage shown on a phone in hand"
+                width={760}
+                height={980}
+                priority
+                className="relative z-10 h-auto w-full object-contain drop-shadow-[0_28px_45px_rgba(7,33,31,0.22)]"
+              />
+            </div>
+          </div>
+
+          <div className="max-w-xl order-2 lg:order-2">
             <div className="inline-flex rounded-full border border-[#bfd1cd] bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-primary">
               Hire or get hired
             </div>
@@ -69,12 +83,12 @@ export default function HomePage() {
               Find trusted, skilled hands for any job. Clean, fast, and easy to use from your phone.
             </p>
 
-            <form action="/professionals" method="GET" className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <form action="/professionals" method="GET" className="mt-6 flex flex-wrap gap-3">
               <input
                 type="text"
                 name="search"
                 placeholder="What service do you need?"
-                className="flex-1 min-h-[52px] rounded-2xl border border-brand-primary bg-white px-5 py-3 text-base text-text-primary placeholder-text-secondary focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                className="flex-1 min-h-[52px] min-w-[200px] rounded-2xl border border-brand-primary bg-white px-5 py-3 text-base text-text-primary placeholder-text-secondary focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
               />
               <select
                 name="city"
@@ -94,7 +108,7 @@ export default function HomePage() {
             </form>
 
             {!loading && !user && (
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-6 flex gap-3">
                 <Link
                   href="/signup"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
@@ -118,20 +132,6 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
-          </div>
-
-          <div className="flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[480px]">
-              <div className="absolute inset-x-10 bottom-4 top-8 rounded-[44px] bg-[radial-gradient(circle,rgba(15,79,74,0.14),transparent_68%)] blur-3xl" />
-              <Image
-                src="/phone-hand.webp"
-                alt="Anywork365 mobile homepage shown on a phone in hand"
-                width={760}
-                height={980}
-                priority
-                className="relative z-10 h-auto w-full object-contain drop-shadow-[0_28px_45px_rgba(7,33,31,0.22)]"
-              />
-            </div>
           </div>
         </div>
       </section>

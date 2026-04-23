@@ -1,5 +1,14 @@
 import { z } from 'zod'
 
+export const COUNTRY_CODES = [
+  { code: '+234', country: 'Nigeria' },
+  { code: '+233', country: 'Ghana' },
+  { code: '+229', country: 'Benin' },
+  { code: '+ Cameroon', country: 'Cameroon' },
+  { code: '+1', country: 'USA' },
+  { code: '+44', country: 'UK' },
+]
+
 export const loginSchema = z.object({
   email: z
     .string()
@@ -24,10 +33,15 @@ export const signupSchema = z
       .string()
       .min(1, 'Email is required')
       .email('Please enter a valid email address'),
+    countryCode: z.string().min(1, 'Please select country code'),
     phone: z
       .string()
       .min(10, 'Please enter a valid phone number')
       .max(15, 'Phone number is too long'),
+    nin: z
+      .string()
+      .length(11, 'NIN must be 11 digits')
+      .regex(/^\d+$/, 'NIN must be only numbers'),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { signupSchema, type SignupInput } from '@/lib/validators/auth'
+import { signupSchema, type SignupInput, COUNTRY_CODES } from '@/lib/validators/auth'
 import { authApi } from '@/lib/api'
 import { NIGERIAN_CITIES } from '@/types'
 import { cn } from '@/lib/utils'
@@ -21,8 +21,9 @@ export default function SignupPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<SignupInput>({ resolver: zodResolver(signupSchema), defaultValues: { role: 'client' } })
+  } = useForm<SignupInput>({ resolver: zodResolver(signupSchema), defaultValues: { role: 'client', countryCode: '+234' } })
 
   function handleRoleSelect(r: 'client' | 'vendor') {
     setRole(r)
@@ -42,7 +43,6 @@ export default function SignupPage() {
   return (
     <div className="min-h-dvh bg-ui-bg flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
-        {/* Logo */}
         <div className="text-center mb-7">
           <BrandLogo size="lg" priority imageClassName="mx-auto object-contain" />
         </div>
@@ -57,7 +57,6 @@ export default function SignupPage() {
             </div>
           )}
 
-          {/* Role toggle */}
           <div className="mb-5">
             <p className="label mb-2">I want to...</p>
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -80,7 +79,6 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
-            {/* Name row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="form-group">
                 <label className="label">First name</label>
@@ -100,10 +98,26 @@ export default function SignupPage() {
               {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
             </div>
 
+            <div className="grid grid-cols-3 gap-2">
+              <div className="form-group col-span-1">
+                <label className="label">Country</label>
+                <select {...register('countryCode')} className="input-field appearance-none">
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group col-span-2">
+                <label className="label">Phone number</label>
+                <input {...register('phone')} type="tel" inputMode="tel" autoComplete="tel" className={`input-field ${errors.phone ? 'border-red-400' : ''}`} placeholder="800 000 0000" />
+                {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone.message}</p>}
+              </div>
+            </div>
+
             <div className="form-group">
-              <label className="label">Phone number</label>
-              <input {...register('phone')} type="tel" inputMode="tel" autoComplete="tel" className={`input-field ${errors.phone ? 'border-red-400' : ''}`} placeholder="+234 800 000 0000" />
-              {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone.message}</p>}
+              <label className="label">11-digit NIN</label>
+              <input {...register('nin')} type="text" inputMode="numeric" className={`input-field ${errors.nin ? 'border-red-400' : ''}`} placeholder="00 0000 0000" />
+              {errors.nin && <p className="mt-1 text-xs text-red-500">{errors.nin.message}</p>}
             </div>
 
             <div className="form-group">
