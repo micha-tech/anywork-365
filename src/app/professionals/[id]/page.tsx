@@ -274,19 +274,19 @@ function handleCall(type: 'voice' | 'video') {
                   <div className="flex flex-wrap gap-3 text-xs text-text-secondary mb-2">
                     <span className="flex items-center gap-1">
                       <span className="text-gray-400">Quality:</span>
-                      <Stars rating={r.ratings.quality} size="xs" />
+                      <Stars rating={r.ratings.quality} />
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="text-gray-400">Time:</span>
-                      <Stars rating={r.ratings.punctuality} size="xs" />
+                      <Stars rating={r.ratings.punctuality} />
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="text-gray-400">Comms:</span>
-                      <Stars rating={r.ratings.communication} size="xs" />
+                      <Stars rating={r.ratings.communication} />
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="text-gray-400">Value:</span>
-                      <Stars rating={r.ratings.value} size="xs" />
+                      <Stars rating={r.ratings.value} />
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary leading-relaxed">{r.text}</p>
