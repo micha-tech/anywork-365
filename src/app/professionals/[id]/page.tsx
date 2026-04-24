@@ -82,10 +82,12 @@ function handleCall(type: 'voice' | 'video') {
       return
     }
     setCalling(type)
+    const phone = pro.phone
+    const countryCode = pro.countryCode
     
     setTimeout(() => {
       try {
-        const phoneNumber = formatPhoneForWhatsApp(pro.phone, pro.countryCode)
+        const phoneNumber = formatPhoneForWhatsApp(phone, countryCode)
         let url: string
         
         if (type === 'video') {
@@ -124,10 +126,12 @@ function handleCall(type: 'voice' | 'video') {
       return
     }
     setQuickConnecting(true)
+    const phone = pro.phone
+    const countryCode = pro.countryCode
     
     setTimeout(() => {
       try {
-        const phoneNumber = formatPhoneForWhatsApp(pro.phone, pro.countryCode)
+        const phoneNumber = formatPhoneForWhatsApp(phone, countryCode)
         const message = encodeURIComponent(`Hi ${pro.firstName}, I found your profile on Anywork365 and I'm interested in your services. Can we discuss?`)
         const url = `https://wa.me/${phoneNumber.replace('+', '')}?text=${message}`
         
@@ -138,7 +142,7 @@ function handleCall(type: 'voice' | 'video') {
         const targetUrl = isMobile ? url : whatsappWebUrl
         
         window.open(targetUrl, '_blank', 'noopener,noreferrer')
-      } catch (error) {
+      } catch {
         alert('Failed to open WhatsApp. Please try again.')
       } finally {
         setQuickConnecting(false)
