@@ -18,6 +18,17 @@ export interface User {
   rating?: number
   reviewCount?: number
   isVerified?: boolean
+  verificationTier?: 'basic' | 'verified' | 'premium'
+  isFeatured?: boolean
+  portfolio?: PortfolioItem[]
+  createdAt: string
+}
+
+export interface PortfolioItem {
+  id: string
+  title: string
+  description?: string
+  imageUrl: string
   createdAt: string
 }
 
@@ -102,6 +113,44 @@ export interface JobPostPayload {
   businessAddress: string
   jobType: JobType
   closingDate: string
+}
+
+// ─── Reviews ───────────────────────────────────────────────────────────────
+
+export interface Review {
+  id: string
+  vendorId: string
+  clientId: string
+  clientName: string
+  overallRating: number
+  ratings: {
+    quality: number
+    punctuality: number
+    communication: number
+    value: number
+  }
+  comment: string
+  imageUrl?: string
+  isUrgent: boolean
+  createdAt: string
+}
+
+// ─── Booking ────────────────────────────────────────────────────────────
+
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+
+export interface Booking {
+  id: string
+  vendorId: string
+  clientId: string
+  serviceTitle: string
+  description: string
+  scheduledDate: string
+  location: string
+  status: BookingStatus
+  price: number
+  isUrgent: boolean
+  createdAt: string
 }
 
 // ─── Applications ─────────────────────────────────────────────────────────────

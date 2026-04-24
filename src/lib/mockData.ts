@@ -13,6 +13,12 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 4.9,
     reviewCount: 87,
     isVerified: true,
+    verificationTier: 'premium',
+    isFeatured: true,
+    portfolio: [
+      { id: 'p1', title: ' Lekki Phase 1 Wiring', imageUrl: '/portfolio/electrical-1.jpg', createdAt: '2024-01-15' },
+      { id: 'p2', title: 'Victoria Island Office', imageUrl: '/portfolio/electrical-2.jpg', createdAt: '2024-02-20' },
+    ],
     createdAt: '2023-01-15T00:00:00Z',
   },
   {
@@ -27,6 +33,8 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 4.8,
     reviewCount: 64,
     isVerified: true,
+    verificationTier: 'verified',
+    isFeatured: true,
     createdAt: '2023-03-10T00:00:00Z',
   },
   {
@@ -40,7 +48,9 @@ export const MOCK_PROFESSIONALS: User[] = [
     skills: ['Repair services', 'Professional services'],
     rating: 4.7,
     reviewCount: 113,
-    isVerified: false,
+    isVerified: true,
+    verificationTier: 'verified',
+    isFeatured: false,
     createdAt: '2022-11-20T00:00:00Z',
   },
   {
@@ -55,6 +65,8 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 5.0,
     reviewCount: 31,
     isVerified: true,
+    verificationTier: 'premium',
+    isFeatured: true,
     createdAt: '2023-06-01T00:00:00Z',
   },
   {
@@ -69,6 +81,7 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 4.6,
     reviewCount: 52,
     isVerified: false,
+    verificationTier: 'basic',
     createdAt: '2023-02-28T00:00:00Z',
   },
   {
@@ -83,6 +96,7 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 4.8,
     reviewCount: 78,
     isVerified: true,
+    verificationTier: 'verified',
     createdAt: '2023-04-12T00:00:00Z',
   },
   {
@@ -97,6 +111,8 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 4.5,
     reviewCount: 156,
     isVerified: true,
+    verificationTier: 'premium',
+    isFeatured: true,
     createdAt: '2022-08-15T00:00:00Z',
   },
   {
@@ -111,6 +127,7 @@ export const MOCK_PROFESSIONALS: User[] = [
     rating: 4.9,
     reviewCount: 42,
     isVerified: true,
+    verificationTier: 'verified',
     createdAt: '2023-05-20T00:00:00Z',
   },
 ]

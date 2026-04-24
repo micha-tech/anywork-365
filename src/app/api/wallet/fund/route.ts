@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { initializePayment, generateReference } from '@/lib/paystack'
+import { checkRateLimit } from '@/lib/wallet'
 import type { ApiResponse } from '@/types'
 
 const schema = z.object({
@@ -22,6 +23,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Authentication required' },
         { status: 401 }
+      )
+    }
+
+    const rateLimit = checkRateLimit(`fund:${session.id}`, 3, 60 * 1000)
+    if (!rateLimit.allowed) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: `Too many requests. Please wait ${rateLimit.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } }
       )
     }
 

@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { resolveAccountNumber, createTransferRecipient } from '@/lib/paystack'
 import { saveBankAccount } from '@/lib/wallet'
+import { checkRateLimit } from '@/lib/wallet'
 import type { ApiResponse } from '@/types'
 
 const schema = z.object({
@@ -68,6 +69,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Only vendors can add bank accounts' },
         { status: 403 }
+      )
+    }
+
+    // Rate limiting: max 3 bank account updates per minute
+    const rateLimit = checkRateLimit(`bank:${session.id}`, 3, 60 * 1000)
+    if (!rateLimit.allowed) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: `Too many requests. Please wait ${rateLimit.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } }
       )
     }
 

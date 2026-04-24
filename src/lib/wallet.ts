@@ -8,6 +8,7 @@
  *  - All mutations go through atomic functions to prevent race conditions
  *  - Every transaction is recorded with a unique reference
  *  - Withdrawal requires verified bank account
+ *  - Rate limiting on funding/withdrawal attempts
  */
 
 import type { Wallet, WalletTransaction, WithdrawalRequest } from '@/types'
@@ -18,6 +19,29 @@ import { generateReference } from './paystack'
 const walletStore  = new Map<string, Wallet>()
 const txStore      = new Map<string, WalletTransaction>()
 const withdrawStore = new Map<string, WithdrawalRequest>()
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+// Simple in-memory rate limit store (replace with Redis in production)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute window
+const RATE_LIMIT_MAX = 5 // max 5 requests per window per endpoint
+
+export function checkRateLimit(key: string, maxRequests = RATE_LIMIT_MAX, windowMs = RATE_LIMIT_WINDOW): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  const record = rateLimitStore.get(key)
+  
+  if (!record || now > record.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
+    return { allowed: true }
+  }
+  
+  if (record.count >= maxRequests) {
+    return { allowed: false, retryAfter: Math.ceil((record.resetAt - now) / 1000) }
+  }
+  
+  record.count++
+  return { allowed: true }
+}
 
 // ─── Get or create wallet ─────────────────────────────────────────────────────
 

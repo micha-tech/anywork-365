@@ -8,18 +8,209 @@ import { MOCK_JOBS, MOCK_PROFESSIONALS } from '@/lib/mockData'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { CategoryIcon, CATEGORY_ICONS } from '@/components/ui/CategoryIcon'
 import { getInitials } from '@/lib/utils'
+import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 
-const TRUST_POINTS = [
-  'Find trusted, skilled hands for everyday and specialist jobs.',
-  'Designed to feel fast and simple on mobile.',
-  'Start in minutes whether you want to hire or get hired.',
-]
+function HeroSection({ user, loading }: { user: any; loading: boolean }) {
+  const { ref: heroRef, isVisible } = useScrollAnimation({ threshold: 0.1 })
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
+
+  return (
+    <section ref={heroRef} className="relative overflow-hidden min-h-[90svh] flex items-center">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#eef4f2] via-[#f8faf9] to-[#e5efed]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(15,79,74,0.08),transparent_50%)] animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(255,214,102,0.12),transparent_40%)] animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+      </div>
+
+      {/* Floating decorative elements */}
+      <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-brand-primary/5 animate-float blur-2xl" style={{ animationDuration: '8s' }} />
+      <div className="absolute bottom-40 right-20 w-48 h-48 rounded-full bg-amber-400/10 animate-float blur-3xl" style={{ animationDuration: '10s', animationDelay: '3s' }} />
+      <div className="absolute top-1/2 right-1/4 w-24 h-24 rounded-full bg-brand-primary/5 animate-float blur-2xl" style={{ animationDuration: '12s', animationDelay: '5s' }} />
+
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* Content - Slide from left */}
+          <div className={`order-2 lg:order-1 transition-all duration-700 ease-out ${isVisible ? 'translate-x-0 opacity-100' : '-translate-x-12 opacity-0'}`}>
+            <div className="space-y-6 lg:space-y-8">
+              {/* Badge */}
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-brand-primary/20 shadow-sm transition-all duration-500 delay-100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-primary">Trusted by 10,000+ users</span>
+              </div>
+
+              {/* Heading */}
+              <div className={`transition-all duration-500 delay-200 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-text-primary">
+                  Find trusted <span className="text-brand-primary">skilled professionals</span> for any job
+                </h1>
+              </div>
+
+              {/* Description */}
+              <p className={`text-lg sm:text-xl text-text-secondary max-w-lg transition-all duration-500 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                Clean, fast, and easy to use from your phone. Get quality service delivered.
+              </p>
+
+              {/* Search form */}
+              <form action="/professionals" method="GET" className={`flex flex-col sm:flex-row gap-3 transition-all duration-500 delay-400 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                <div className={`relative flex-1 transition-all duration-300 ${searchFocused ? 'scale-[1.02]' : ''}`}>
+                  <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    name="search"
+                    placeholder="What service do you need?"
+                    className="w-full h-[56px] pl-12 pr-4 rounded-2xl border-2 border-brand-primary/20 bg-white text-text-primary placeholder-text-secondary focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setSearchFocused(false)}
+                  />
+                </div>
+                <select
+                  name="city"
+                  className="h-[56px] px-4 rounded-2xl border-2 border-brand-primary/20 bg-white text-text-primary focus:border-brand-primary outline-none transition-all cursor-pointer"
+                >
+                  <option value="">All cities</option>
+                  {NIGERIAN_CITIES.slice(0, 10).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="h-[56px] px-8 rounded-2xl bg-brand-primary text-white font-semibold hover:bg-brand-hover transition-all hover:shadow-lg hover:shadow-brand-primary/20 active:scale-[0.98]"
+                >
+                  Search
+                </button>
+              </form>
+
+              {/* CTA buttons */}
+              {!loading && !user && (
+                <div className={`flex flex-wrap gap-3 transition-all duration-500 delay-500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                  <Link
+                    href="/signup"
+                    className="h-[48px] px-6 rounded-2xl bg-brand-primary text-white font-semibold flex items-center justify-center hover:bg-brand-hover transition-all hover:shadow-lg active:scale-[0.98] hover-lift"
+                  >
+                    Get Started Free
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="h-[48px] px-6 rounded-2xl border-2 border-brand-primary text-brand-primary font-semibold flex items-center justify-center hover:bg-brand-light transition-all active:scale-[0.98] hover-lift"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
+
+              {/* Trust indicators */}
+              <div className={`flex flex-wrap items-center gap-6 pt-4 transition-all duration-500 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                {[
+                  { icon: '✓', text: 'Verified Professionals' },
+                  { icon: '★', text: '4.9 Average Rating' },
+                  { icon: '⚡', text: 'Quick Response' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <span className="w-6 h-6 rounded-full bg-brand-light flex items-center justify-center text-brand-primary text-xs font-bold">{item.icon}</span>
+                    <span>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Image - Fade in from right */}
+          <div className={`order-1 lg:order-2 flex justify-center transition-all duration-1000 ease-out ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
+            <div className="relative">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-amber-400/20 rounded-[3rem] blur-3xl scale-90" />
+              
+              {/* Main image */}
+              <div className={`relative z-10 transition-all duration-500 ${imageLoaded ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+                <Image
+                  src="/phone-hand.webp"
+                  alt="Anywork365 mobile app on phone"
+                  width={500}
+                  height={650}
+                  priority
+                  onLoad={() => setImageLoaded(true)}
+                  className="w-full max-w-[380px] sm:max-w-[420px] lg:max-w-[480px] h-auto object-contain drop-shadow-2xl"
+                  style={{
+                    filter: 'drop-shadow(0 25px 50px rgba(7, 33, 31, 0.15))',
+                  }}
+                />
+              </div>
+
+              {/* Floating badge */}
+              <div className="absolute -left-2 sm:-left-4 top-[15%] z-20 bg-white rounded-2xl shadow-lg p-2 sm:p-3 animate-float hover-lift cursor-pointer" style={{ animationDuration: '6s' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-text-primary">Job Completed</p>
+                    <p className="text-[10px] text-text-secondary">2 hours ago</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating rating badge */}
+              <div className="absolute -right-2 sm:-right-4 bottom-[25%] z-20 bg-white rounded-2xl shadow-lg p-2 sm:p-3 animate-float hover-lift cursor-pointer" style={{ animationDuration: '8s', animationDelay: '2s' }}>
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-1">
+                    {['⭐', '⭐', '⭐', '⭐', '⭐'].map((star, i) => (
+                      <span key={i} className="text-sm">{star}</span>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[10px] text-text-secondary mt-1">4.9/5 from 2k+ reviews</p>
+              </div>
+
+              {/* Stats card */}
+              <div className="absolute -left-2 sm:-left-4 bottom-[5%] z-20 bg-white rounded-2xl shadow-lg p-2 sm:p-3 animate-float hover-lift cursor-pointer" style={{ animationDuration: '7s', animationDelay: '1s' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-text-primary">500+ Vendors</p>
+                    <p className="text-[10px] text-text-secondary">Ready to help</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scroll indicator */}
+      <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 transition-all duration-500 delay-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="flex flex-col items-center gap-2 animate-bounce">
+          <span className="text-xs text-text-secondary">Scroll to explore</span>
+          <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 export default function HomePage() {
   const { user, loading } = useCurrentUser()
   
+  const { ref: categoriesSectionRef, isVisible: categoriesVisible } = useScrollAnimation({ threshold: 0.1 })
+  const { ref: vendorsSectionRef, isVisible: vendorsVisible } = useScrollAnimation({ threshold: 0.1 })
+  const { ref: jobsSectionRef, isVisible: jobsVisible } = useScrollAnimation({ threshold: 0.1 })
+  
   const displayCategories = JOB_CATEGORIES.slice(0, 12)
-  const featuredVendors = MOCK_PROFESSIONALS.slice(0, 8)
+  const topRatedVendors = [...MOCK_PROFESSIONALS].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 6)
+  const featuredVendors = MOCK_PROFESSIONALS.filter(v => v.isFeatured).slice(0, 8)
   const latestJobs = MOCK_JOBS.slice(0, 6)
 
   const [favorites, setFavorites] = useState<string[]>([])
@@ -51,94 +242,12 @@ export default function HomePage() {
   }
 
   return (
-    <div className="bg-[#eef4f2]">
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,79,74,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,214,102,0.22),transparent_26%),linear-gradient(180deg,#f8fbfa_0%,#eef4f2_52%,#e5efed_100%)]" />
+    <div className="bg-[#eef4f2] overflow-hidden">
+      <HeroSection user={user} loading={loading} />
 
-        <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1fr] lg:px-8 lg:py-16">
-          <div className="flex justify-center lg:justify-start order-1 lg:order-1">
-            <div className="relative w-full max-w-[480px]">
-              <div className="absolute inset-x-10 bottom-4 top-8 rounded-[44px] bg-[radial-gradient(circle,rgba(15,79,74,0.14),transparent_68%)] blur-3xl" />
-              <Image
-                src="/phone-hand.webp"
-                alt="Anywork365 mobile homepage shown on a phone in hand"
-                width={760}
-                height={980}
-                priority
-                className="relative z-10 h-auto w-full object-contain drop-shadow-[0_28px_45px_rgba(7,33,31,0.22)]"
-              />
-            </div>
-          </div>
-
-          <div className="max-w-xl order-2 lg:order-2">
-            <div className="inline-flex rounded-full border border-[#bfd1cd] bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-primary">
-              Hire or get hired
-            </div>
-
-            <h1 className="mt-5 font-display text-4xl font-semibold leading-tight text-text-primary sm:text-5xl lg:text-6xl">
-              Welcome to Anywork365.
-            </h1>
-
-            <p className="mt-4 text-lg leading-8 text-text-secondary">
-              Find trusted, skilled hands for any job. Clean, fast, and easy to use from your phone.
-            </p>
-
-            <form action="/professionals" method="GET" className="mt-6 flex flex-wrap gap-3">
-              <input
-                type="text"
-                name="search"
-                placeholder="What service do you need?"
-                className="flex-1 min-h-[52px] min-w-[200px] rounded-2xl border border-brand-primary bg-white px-5 py-3 text-base text-text-primary placeholder-text-secondary focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-              />
-              <select
-                name="city"
-                className="min-h-[52px] rounded-2xl border border-brand-primary bg-white px-4 py-3 text-base text-text-primary focus:border-brand-primary focus:outline-none"
-              >
-                <option value="">All cities</option>
-                {NIGERIAN_CITIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="min-h-[52px] rounded-2xl bg-brand-primary px-6 text-base font-semibold text-white transition-colors hover:bg-brand-hover"
-              >
-                Search
-              </button>
-            </form>
-
-            {!loading && !user && (
-              <div className="mt-6 flex gap-3">
-                <Link
-                  href="/signup"
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
-                >
-                  Sign up
-                </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-brand-primary bg-white px-6 text-sm font-semibold text-brand-primary transition-colors hover:bg-brand-light"
-                >
-                  Sign in
-                </Link>
-              </div>
-            )}
-
-            <ul className="mt-6 space-y-3">
-              {TRUST_POINTS.map((point) => (
-                <li key={point} className="flex items-start gap-3 text-sm leading-6 text-text-secondary">
-                  <span className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[#ffd666]" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
+      <section ref={categoriesSectionRef} className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
+          <div className={`flex items-center justify-between mb-6 transition-all duration-700 ${categoriesVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-primary">
                 Services
@@ -153,11 +262,15 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {displayCategories.map((service) => (
+            {displayCategories.map((service, index) => (
               <Link
                 key={service}
                 href={`/professionals?category=${encodeURIComponent(service)}`}
-                className="flex flex-col items-center justify-center rounded-xl border border-[#cfe0dc] bg-[#f8faf9] p-4 text-center transition-all hover:border-brand-primary hover:shadow-md hover:-translate-y-0.5"
+                data-animate-item={index}
+                className={`flex flex-col items-center justify-center rounded-xl border border-[#cfe0dc] bg-[#f8faf9] p-4 text-center transition-all duration-500 hover:border-brand-primary hover:shadow-md hover:-translate-y-0.5 hover-lift ${
+                  categoriesVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+                }`}
+                style={{ transitionDelay: `${index * 50}ms` }}
               >
                 <CategoryIcon category={service} size={48} />
                 <span className="text-xs font-medium text-text-primary line-clamp-2 mt-2">{service}</span>
@@ -167,12 +280,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
+<section ref={vendorsSectionRef} className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
+          <div className={`flex items-center justify-between mb-6 transition-all duration-700 ${vendorsVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-primary">
-                Featured
+                Top Vendors
               </p>
               <h2 className="mt-1 font-display text-xl sm:text-2xl font-semibold text-text-primary">
                 Top Rated Vendors
@@ -184,33 +297,52 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredVendors.map((vendor, _idx) => (
+            {featuredVendors.map((vendor, index) => (
               <Link
                 key={vendor.id}
                 href={`/professionals/${vendor.id}`}
-                className="card hover:border-brand-primary transition-all hover:-translate-y-0.5"
+                data-animate-item={index}
+                className={`card hover:border-brand-primary transition-all duration-500 hover:-translate-y-0.5 hover-lift ${
+                  vendorsVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+                }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-start gap-3">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full bg-brand-primary flex items-center justify-center text-white font-semibold text-lg">
                       {getInitials(vendor.firstName, vendor.lastName)}
                     </div>
-                    {vendor.isVerified && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
+                    {vendor.verificationTier && (
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white ${
+                        vendor.verificationTier === 'premium' ? 'bg-amber-500' : 
+                        vendor.verificationTier === 'verified' ? 'bg-blue-500' : 'bg-gray-400'
+                      }`}>
+                        {vendor.verificationTier === 'premium' ? (
+                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-text-primary truncate">{vendor.firstName} {vendor.lastName}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-text-primary truncate">{vendor.firstName} {vendor.lastName}</h3>
+                      {vendor.isFeatured && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">Featured</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 mt-0.5">
                       <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <span className="text-sm text-text-secondary">{vendor.city}</span>
+                      <span className="text-xs text-text-secondary ml-2 capitalize">({vendor.verificationTier})</span>
                     </div>
                   </div>
                   <button 
@@ -249,9 +381,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
+      <section ref={vendorsSectionRef} className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
+          <div className={`flex items-center justify-between mb-6 transition-all duration-700 ${vendorsVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-primary">
                 Top Vendors
@@ -270,7 +402,10 @@ export default function HomePage() {
               <Link
                 key={vendor.id}
                 href={`/professionals/${vendor.id}`}
-                className="card hover:border-brand-primary transition-all hover:-translate-y-0.5 text-center"
+                className={`card hover:border-brand-primary transition-all duration-500 hover:-translate-y-0.5 hover-lift text-center ${
+                  vendorsVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+                }`}
+                style={{ transitionDelay: `${i * 75}ms` }}
               >
                 <div className="relative inline-block mb-2">
                   <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center text-lg font-semibold text-white ${
@@ -308,9 +443,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
+      <section ref={jobsSectionRef} className="border-t border-[#d5e1de] bg-white/80 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
+          <div className={`flex items-center justify-between mb-6 transition-all duration-700 ${jobsVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-primary">
                 Career
@@ -325,11 +460,15 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {latestJobs.map((job) => (
+            {latestJobs.map((job, index) => (
               <Link
                 key={job.id}
                 href={`/jobs/${job.id}`}
-                className="card hover:border-brand-primary transition-all hover:-translate-y-0.5"
+                data-animate-item={index}
+                className={`card hover:border-brand-primary transition-all duration-500 hover:-translate-y-0.5 hover-lift ${
+                  jobsVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+                }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-start justify-end gap-2 mb-2">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${

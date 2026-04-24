@@ -1,13 +1,14 @@
 /**
  * POST /api/wallet/withdraw
  * Professional requests a withdrawal to their verified bank account
- * Security checks: balance, minimum amount, verified bank account
+ * Security checks: balance, minimum amount, verified bank account, rate limiting
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { getOrCreateWallet, requestWithdrawal, rollbackWithdrawal } from '@/lib/wallet'
 import { initiateTransfer, generateReference } from '@/lib/paystack'
+import { checkRateLimit } from '@/lib/wallet'
 import type { ApiResponse } from '@/types'
 
 const schema = z.object({
@@ -33,6 +34,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Only vendors can withdraw funds' },
         { status: 403 }
+      )
+    }
+
+    // Rate limiting: max 2 withdrawals per minute
+    const rateLimit = checkRateLimit(`withdraw:${session.id}`, 2, 60 * 1000)
+    if (!rateLimit.allowed) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: `Too many withdrawal requests. Please wait ${rateLimit.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } }
       )
     }
 
