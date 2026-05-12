@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listVacancies, createVacancy, getCompanyByUid } from '@/lib/queries'
 import { getSession } from '@/lib/auth'
+import { query } from '@/lib/db'
 import { jobPostSchema } from '@/lib/validators/job'
 import type { ApiResponse, Job } from '@/types'
 
@@ -15,25 +16,37 @@ export async function GET(req: NextRequest) {
 
   const rows = await listVacancies({ search: search || undefined, location: location || undefined, job_type: job_type || undefined })
   const sliced = limit > 0 ? rows.slice(0, limit) : rows
+  const ids = sliced.map((r) => r.company_id).filter(Boolean)
 
-  const jobs: Job[] = sliced.map((r) => ({
-    id: String(r.vacancy_id),
-    title: r.vacancy_title,
-    description: r.job_description,
-    category: 'Professional services' as Job['category'],
-    budget: 0,
-    city: r.vacancy_location,
-    status: r.closed ? 'completed' as Job['status'] : 'open' as Job['status'],
-    timeline: 'flexible',
-    posterId: '',
-    posterName: '',
-    businessName: '',
-    businessAddress: '',
-    jobType: r.work_type === 'Remote' ? 'contract' : 'full-time',
-    closingDate: r.closing_date || '',
-    applicationCount: 0,
-    createdAt: r.date_created,
-  }))
+  const companyMap: Record<number, { name: string; address: string }> = {}
+  if (ids.length > 0) {
+    const companies = await query<any[]>('SELECT company_id, company_name, company_address FROM companies WHERE company_id IN (' + ids.join(',') + ')')
+    for (const c of companies) {
+      companyMap[c.company_id] = { name: c.company_name, address: c.company_address || '' }
+    }
+  }
+
+  const jobs: Job[] = sliced.map((r) => {
+    const company = companyMap[r.company_id]
+    return {
+      id: String(r.vacancy_id),
+      title: r.vacancy_title,
+      description: r.job_description,
+      category: r.work_type === 'Remote' ? 'Professional services' : 'General services' as Job['category'],
+      budget: 0,
+      city: r.vacancy_location,
+      status: r.closed ? 'completed' as Job['status'] : 'open' as Job['status'],
+      timeline: 'flexible',
+      posterId: '',
+      posterName: '',
+      businessName: company?.name || '',
+      businessAddress: company?.address || '',
+      jobType: r.work_type === 'Remote' ? 'contract' : 'full-time',
+      closingDate: r.closing_date || '',
+      applicationCount: 0,
+      createdAt: r.date_created,
+    }
+  })
 
   return NextResponse.json<ApiResponse<Job[]>>(
     { success: true, data: jobs },

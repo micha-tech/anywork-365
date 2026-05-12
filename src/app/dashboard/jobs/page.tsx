@@ -1,34 +1,44 @@
 import Link from 'next/link'
 import { listVacancies } from '@/lib/queries'
+import { query } from '@/lib/db'
 import { JobCard } from '@/components/forms/JobCard'
 import type { Job } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
-function vacancyToJob(v: Awaited<ReturnType<typeof listVacancies>>[number]): Job {
-  return {
-    id: String(v.vacancy_id),
-    title: v.vacancy_title,
-    description: v.job_description,
-    category: 'Professional services' as Job['category'],
-    budget: 0,
-    city: v.vacancy_location,
-    status: v.closed ? ('completed' as Job['status']) : ('open' as Job['status']),
-    timeline: 'flexible',
-    posterId: '',
-    posterName: '',
-    businessName: '',
-    businessAddress: '',
-    jobType: v.work_type === 'Remote' ? 'contract' : 'full-time',
-    closingDate: v.closing_date || '',
-    applicationCount: 0,
-    createdAt: v.date_created,
-  }
-}
-
 export default async function MyJobsPage() {
   const vacancies = await listVacancies()
-  const jobs = vacancies.map(vacancyToJob)
+  const ids = vacancies.map((v) => v.company_id).filter(Boolean)
+
+  const companyMap: Record<number, { name: string; address: string }> = {}
+  if (ids.length > 0) {
+    const companies = await query<any[]>('SELECT company_id, company_name, company_address FROM companies WHERE company_id IN (' + ids.join(',') + ')')
+    for (const c of companies) {
+      companyMap[c.company_id] = { name: c.company_name, address: c.company_address || '' }
+    }
+  }
+
+  const jobs: Job[] = vacancies.map((v) => {
+    const company = companyMap[v.company_id]
+    return {
+      id: String(v.vacancy_id),
+      title: v.vacancy_title,
+      description: v.job_description,
+      category: v.work_type === 'Remote' ? 'Professional services' : 'General services' as Job['category'],
+      budget: 0,
+      city: v.vacancy_location,
+      status: v.closed ? ('completed' as Job['status']) : ('open' as Job['status']),
+      timeline: 'flexible',
+      posterId: '',
+      posterName: '',
+      businessName: company?.name || '',
+      businessAddress: company?.address || '',
+      jobType: v.work_type === 'Remote' ? 'contract' : 'full-time',
+      closingDate: v.closing_date || '',
+      applicationCount: 0,
+      createdAt: v.date_created,
+    }
+  })
 
   const activeJobs = jobs.filter((j) => j.status === 'open')
   const pendingJobs: Job[] = []

@@ -4,25 +4,34 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
-import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useCurrentUser, getInitialsFromUser } from '@/hooks/useCurrentUser'
 import type { Job } from '@/types'
 
-const METRICS = [
-  { label: 'Active Jobs',    value: '3',  change: '↑ 1 new this week' },
-  { label: 'Applications',   value: '12', change: '↑ 4 new today' },
-  { label: 'Hired Pros',     value: '7',  change: '↑ 2 this month' },
-  { label: 'Jobs Completed', value: '24', change: 'All time' },
-]
+interface Metric {
+  label: string
+  value: string
+  change: string
+}
 
-const RECENT_ACTIVITY = [
-  { initials: 'AO', color: 'bg-brand-primary', text: 'Adaeze Okeke applied to Electrical Wiring', sub: '⭐ 4.9 · Lagos', time: '2h ago' },
-  { initials: 'KM', color: 'bg-blue-600',      text: 'Kola Musa completed Plumbing Repair',       sub: 'Ready for review', time: '5h ago' },
-  { initials: 'TJ', color: 'bg-amber-500',     text: 'Tunde James applied to AC Installation',    sub: '⭐ 4.7 · Abuja',  time: '1d ago' },
-]
+interface ActivityItem {
+  initials: string
+  color: string
+  text: string
+  sub: string
+  time: string
+}
 
 export default function DashboardPage() {
   const { user, loading } = useCurrentUser()
   const [recentJobs, setRecentJobs] = useState<Job[]>([])
+  const [metrics, setMetrics] = useState<Metric[]>([
+    { label: 'Active Jobs',    value: '—', change: 'Loading...' },
+    { label: 'Applications',   value: '—', change: 'Loading...' },
+    { label: 'Hired Pros',     value: '—', change: 'Loading...' },
+    { label: 'Jobs Completed', value: '—', change: 'Loading...' },
+  ])
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [dashboardLoading, setDashboardLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/jobs?limit=3')
@@ -32,6 +41,25 @@ export default function DashboardPage() {
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (loading || !user) return
+    fetch('/api/dashboard')
+      .then((r) => r.json())
+      .then((res) => {
+        if (!res.success) return
+        const { stats, activity: acts, changeMap } = res.data
+        setMetrics([
+          { label: 'Active Jobs',    value: String(stats.activeJobs),    change: changeMap.activeJobs },
+          { label: 'Applications',   value: String(stats.applications),   change: changeMap.applications },
+          { label: 'Hired Pros',     value: String(stats.hiredPros),     change: changeMap.hiredPros },
+          { label: 'Jobs Completed', value: String(stats.jobsCompleted), change: changeMap.jobsCompleted },
+        ])
+        setActivity(acts)
+        setDashboardLoading(false)
+      })
+      .catch(() => setDashboardLoading(false))
+  }, [user, loading])
 
   const greeting = loading
     ? 'Good morning 👋'
@@ -46,7 +74,7 @@ export default function DashboardPage() {
 
       {/* Metrics — 2 cols on all sizes */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-5 sm:mb-7">
-        {METRICS.map((m) => (
+        {metrics.map((m) => (
           <div key={m.label} className="bg-white border border-ui-border rounded-xl p-4 sm:p-5">
             <p className="text-xs font-medium text-text-secondary uppercase tracking-wide leading-tight">{m.label}</p>
             <p className="font-display text-2xl sm:text-3xl font-semibold text-text-primary my-1">{m.value}</p>
@@ -60,7 +88,11 @@ export default function DashboardPage() {
         <div className="card">
           <h2 className="font-medium text-base mb-4">Recent Activity</h2>
           <div className="divide-y divide-ui-border">
-            {RECENT_ACTIVITY.map((a, i) => (
+            {dashboardLoading ? (
+              <p className="text-sm text-text-secondary py-4 text-center">Loading activity...</p>
+            ) : activity.length === 0 ? (
+              <p className="text-sm text-text-secondary py-4 text-center">No recent activity</p>
+            ) : activity.map((a, i) => (
               <div key={i} className="flex items-start gap-3 py-3">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 overflow-hidden ${a.color}`}>
                   <span className="leading-none">{a.initials}</span>

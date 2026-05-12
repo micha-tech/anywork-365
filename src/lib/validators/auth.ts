@@ -4,7 +4,7 @@ export const COUNTRY_CODES = [
   { code: '+234', country: 'Nigeria' },
   { code: '+233', country: 'Ghana' },
   { code: '+229', country: 'Benin' },
-  { code: '+ Cameroon', country: 'Cameroon' },
+  { code: '+237', country: 'Cameroon' },
   { code: '+1', country: 'USA' },
   { code: '+44', country: 'UK' },
 ]

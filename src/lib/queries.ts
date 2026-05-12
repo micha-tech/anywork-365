@@ -703,3 +703,110 @@ export async function deleteFcmToken(token: string) {
     return { error: e?.message || 'Failed to delete token' }
   }
 }
+
+// ─── Dashboard Stats ──────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  activeJobs: number
+  applications: number
+  hiredPros: number
+  jobsCompleted: number
+}
+
+export interface ActivityItem {
+  initials: string
+  color: string
+  text: string
+  sub: string
+  time: string
+}
+
+const ACTIVITY_COLORS = ['bg-brand-primary', 'bg-blue-600', 'bg-amber-500', 'bg-rose-500', 'bg-teal-600', 'bg-purple-600']
+
+export async function getDashboardStats(uid: string, role: string): Promise<DashboardStats> {
+  const business = role === 'vendor' ? await getBusinessByUid(uid) : null
+
+  if (business) {
+    const [activeJobs] = await query<any[]>('SELECT COUNT(*) AS c FROM vacancies WHERE company_id = ? AND closed = 0', [business.businessId])
+    const [apps] = await query<any[]>('SELECT COUNT(*) AS c FROM bookings WHERE businessId = ?', [business.businessId])
+    const [hired] = await query<any[]>("SELECT COUNT(*) AS c FROM bookings WHERE businessId = ? AND bookingStatus = 'Confirmed'", [business.businessId])
+    const [done] = await query<any[]>("SELECT COUNT(*) AS c FROM bookings WHERE businessId = ? AND bookingStatus = 'Closed'", [business.businessId])
+    return {
+      activeJobs: Number(activeJobs.c),
+      applications: Number(apps.c),
+      hiredPros: Number(hired.c),
+      jobsCompleted: Number(done.c),
+    }
+  }
+
+  const [bookings] = await query<any[]>('SELECT COUNT(*) AS c FROM bookings WHERE clientUID = ?', [uid])
+  const [hired] = await query<any[]>("SELECT COUNT(*) AS c FROM bookings WHERE clientUID = ? AND bookingStatus = 'Confirmed'", [uid])
+  const [done] = await query<any[]>("SELECT COUNT(*) AS c FROM bookings WHERE clientUID = ? AND (bookingStatus = 'Closed' OR jobStatus = 'completed')", [uid])
+  return {
+    activeJobs: Number(bookings.c),
+    applications: Number(bookings.c),
+    hiredPros: Number(hired.c),
+    jobsCompleted: Number(done.c),
+  }
+}
+
+export async function getRecentActivity(uid: string, role: string): Promise<ActivityItem[]> {
+  const business = role === 'vendor' ? await getBusinessByUid(uid) : null
+  const items: ActivityItem[] = []
+
+  if (business) {
+    const rows = await query<any[]>(
+      `SELECT b.*, u.fullName FROM bookings b
+       LEFT JOIN users u ON b.clientUID = u.uid
+       WHERE b.businessId = ? ORDER BY b.dateBooked DESC LIMIT 5`,
+      [business.businessId]
+    )
+    for (const row of rows) {
+      const name = row.fullName || 'A user'
+      const parts = name.split(' ')
+      const initials = ((parts[0]?.[0] || '') + (parts[1]?.[0] || parts[0]?.[1] || '')).toUpperCase()
+      const statusMap: Record<string, string> = { Pending: 'applied to', Confirmed: 'was hired for', Closed: 'completed', Cancelled: 'cancelled' }
+      const action = statusMap[row.bookingStatus] || 'interacted with'
+      items.push({
+        initials: initials || '??',
+        color: ACTIVITY_COLORS[Math.floor(Math.random() * ACTIVITY_COLORS.length)],
+        text: `${name} ${action} ${row.additionalInfo || 'a job'}`,
+        sub: row.bookingStatus === 'Pending' ? 'Awaiting response' : `${row.bookingStatus} · ${row.bookedDate || ''}`,
+        time: row.dateBooked ? timeAgo(row.dateBooked) : '',
+      })
+    }
+  } else {
+    const rows = await query<any[]>(
+      `SELECT b.*, bs.businessName FROM bookings b
+       LEFT JOIN businesses bs ON b.businessId = bs.businessId
+       WHERE b.clientUID = ? ORDER BY b.dateBooked DESC LIMIT 5`,
+      [uid]
+    )
+    for (const row of rows) {
+      const name = row.businessName || 'A vendor'
+      const initials = name.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || '??'
+      const statusMap: Record<string, string> = { Pending: 'requested service from', Confirmed: 'confirmed booking with', Closed: 'completed work with', Cancelled: 'cancelled with' }
+      const action = statusMap[row.bookingStatus] || 'interacted with'
+      items.push({
+        initials,
+        color: ACTIVITY_COLORS[Math.floor(Math.random() * ACTIVITY_COLORS.length)],
+        text: `You ${action} ${name}`,
+        sub: row.bookingStatus === 'Pending' ? 'Waiting for response' : `${row.bookingStatus} · ${row.bookedDate || ''}`,
+        time: row.dateBooked ? timeAgo(row.dateBooked) : '',
+      })
+    }
+  }
+
+  return items.slice(0, 5)
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now()
+  const date = new Date(dateStr).getTime()
+  const diff = Math.floor((now - date) / 1000)
+  if (diff < 60) return 'Just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
+  return new Date(dateStr).toLocaleDateString()
+}
