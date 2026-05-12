@@ -22,90 +22,88 @@ function HeroSection({ user, loading }: { user: any; loading: boolean }) {
 
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          <div className="order-2 lg:order-1">
-            <div className="space-y-6 lg:space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-brand-primary/20 shadow-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
-                </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-primary">Trusted by 10,000+ users</span>
+          <div className="space-y-6 lg:space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-brand-primary/20 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-primary">Trusted by 10,000+ users</span>
+            </div>
+
+            <div>
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-text-primary">
+                Find trusted <span className="text-brand-primary">skilled professionals</span> for any job
+              </h1>
+            </div>
+
+            <p className="text-lg sm:text-xl text-text-secondary max-w-lg">
+              Clean, fast, and easy to use from your phone. Get quality service delivered.
+            </p>
+
+            <form action="/professionals" method="GET" className="flex flex-col sm:flex-row gap-3">
+              <div className={`relative flex-1 transition-all duration-300 ${searchFocused ? 'scale-[1.02]' : ''}`}>
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  name="search"
+                  placeholder="What service do you need?"
+                  className="w-full h-[56px] pl-12 pr-4 rounded-2xl border-2 border-brand-primary/20 bg-white text-text-primary placeholder-text-secondary focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                />
               </div>
-
-              <div>
-                <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-text-primary">
-                  Find trusted <span className="text-brand-primary">skilled professionals</span> for any job
-                </h1>
-              </div>
-
-              <p className="text-lg sm:text-xl text-text-secondary max-w-lg">
-                Clean, fast, and easy to use from your phone. Get quality service delivered.
-              </p>
-
-              <form action="/professionals" method="GET" className="flex flex-col sm:flex-row gap-3">
-                <div className={`relative flex-1 transition-all duration-300 ${searchFocused ? 'scale-[1.02]' : ''}`}>
-                  <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    type="text"
-                    name="search"
-                    placeholder="What service do you need?"
-                    className="w-full h-[56px] pl-12 pr-4 rounded-2xl border-2 border-brand-primary/20 bg-white text-text-primary placeholder-text-secondary focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
-                    onFocus={() => setSearchFocused(true)}
-                    onBlur={() => setSearchFocused(false)}
-                  />
-                </div>
-                <select
-                  name="city"
-                  className="h-[56px] px-4 rounded-2xl border-2 border-brand-primary/20 bg-white text-text-primary focus:border-brand-primary outline-none transition-all cursor-pointer"
-                >
-                  <option value="">All cities</option>
-                  {NIGERIAN_CITIES.slice(0, 10).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className="h-[56px] px-8 rounded-2xl bg-brand-primary text-white font-semibold hover:bg-brand-hover transition-all hover:shadow-lg hover:shadow-brand-primary/20 active:scale-[0.98]"
-                >
-                  Search
-                </button>
-              </form>
-
-              {!loading && !user && (
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    href="/signup"
-                    className="h-[48px] px-6 rounded-2xl bg-brand-primary text-white font-semibold flex items-center justify-center hover:bg-brand-hover transition-all hover:shadow-lg active:scale-[0.98]"
-                  >
-                    Get Started Free
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="h-[48px] px-6 rounded-2xl border-2 border-brand-primary text-brand-primary font-semibold flex items-center justify-center hover:bg-brand-light transition-all active:scale-[0.98]"
-                  >
-                    Sign In
-                  </Link>
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center gap-6 pt-4">
-                {[
-                  { icon: '\u2713', text: 'Verified Professionals' },
-                  { icon: '\u2605', text: '4.9 Average Rating' },
-                  { icon: '\u26A1', text: 'Quick Response' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-text-secondary">
-                    <span className="w-6 h-6 rounded-full bg-brand-light flex items-center justify-center text-brand-primary text-xs font-bold">{item.icon}</span>
-                    <span>{item.text}</span>
-                  </div>
+              <select
+                name="city"
+                className="h-[56px] px-4 rounded-2xl border-2 border-brand-primary/20 bg-white text-text-primary focus:border-brand-primary outline-none transition-all cursor-pointer"
+              >
+                <option value="">All cities</option>
+                {NIGERIAN_CITIES.slice(0, 10).map((c) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
+              </select>
+              <button
+                type="submit"
+                className="h-[56px] px-8 rounded-2xl bg-brand-primary text-white font-semibold hover:bg-brand-hover transition-all hover:shadow-lg hover:shadow-brand-primary/20 active:scale-[0.98]"
+              >
+                Search
+              </button>
+            </form>
+
+            {!loading && !user && (
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/signup"
+                  className="h-[48px] px-6 rounded-2xl bg-brand-primary text-white font-semibold flex items-center justify-center hover:bg-brand-hover transition-all hover:shadow-lg active:scale-[0.98]"
+                >
+                  Get Started Free
+                </Link>
+                <Link
+                  href="/login"
+                  className="h-[48px] px-6 rounded-2xl border-2 border-brand-primary text-brand-primary font-semibold flex items-center justify-center hover:bg-brand-light transition-all active:scale-[0.98]"
+                >
+                  Sign In
+                </Link>
               </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-6 pt-4">
+              {[
+                { icon: '\u2713', text: 'Verified Professionals' },
+                { icon: '\u2605', text: '4.9 Average Rating' },
+                { icon: '\u26A1', text: 'Quick Response' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-text-secondary">
+                  <span className="w-6 h-6 rounded-full bg-brand-light flex items-center justify-center text-brand-primary text-xs font-bold">{item.icon}</span>
+                  <span>{item.text}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="order-1 lg:order-2 flex justify-center">
+          <div className="flex justify-center">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-amber-400/20 rounded-[3rem] blur-3xl scale-90" />
               
