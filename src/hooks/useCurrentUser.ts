@@ -27,6 +27,8 @@ export function useCurrentUser(): CurrentUserState {
 export function getInitialsFromUser(user: AuthUser | null): string {
   if (!user) return '??'
   const first = user.firstName?.[0] ?? ''
-  const last  = user.lastName?.[0]  ?? ''
+  const last  = user.lastName?.[0] ?? ''
+  if (!first && !last) return '??'
+  if (!last) return `${first}${first}`.toUpperCase()
   return `${first}${last}`.toUpperCase()
 }

@@ -62,8 +62,8 @@ export default function DashboardPage() {
           <div className="divide-y divide-ui-border">
             {RECENT_ACTIVITY.map((a, i) => (
               <div key={i} className="flex items-start gap-3 py-3">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 ${a.color}`}>
-                  {a.initials}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 overflow-hidden ${a.color}`}>
+                  <span className="leading-none">{a.initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-text-primary leading-snug">{a.text}</p>

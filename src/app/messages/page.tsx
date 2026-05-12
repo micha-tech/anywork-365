@@ -179,8 +179,8 @@ function ChatPageContent() {
                     selectedConv?.id === conv.id ? 'bg-[#E5F3EF]' : ''
                   }`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-[#00A884] flex items-center justify-center text-white font-medium flex-shrink-0">
-                    {initials}
+                  <div className="w-12 h-12 rounded-full bg-[#00A884] flex items-center justify-center text-white font-medium flex-shrink-0 overflow-hidden">
+                    <span className="leading-none">{initials}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -244,8 +244,8 @@ function ChatPageContent() {
                 const initials = other ? getInitials(other.firstName, other.lastName) : '?'
                 return (
                   <>
-                    <div className="w-10 h-10 rounded-full bg-[#00A884] flex items-center justify-center text-white font-medium flex-shrink-0">
-                      {initials}
+                    <div className="w-10 h-10 rounded-full bg-[#00A884] flex items-center justify-center text-white font-medium flex-shrink-0 overflow-hidden">
+                      <span className="leading-none">{initials}</span>
                     </div>
                     <div>
                       <p className="font-medium text-[#111] flex items-center gap-1.5">

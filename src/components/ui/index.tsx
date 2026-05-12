@@ -90,13 +90,13 @@ export function Avatar({ initials, src, size = 'md', colorIndex = 0, className }
   return (
     <div
       className={cn(
-        'flex flex-shrink-0 items-center justify-center rounded-full font-semibold text-white',
+        'flex flex-shrink-0 items-center justify-center rounded-full font-semibold text-white overflow-hidden',
         sizeMap[size],
         color,
         className
       )}
     >
-      {initials}
+      <span className="leading-none">{initials}</span>
     </div>
   )
 }

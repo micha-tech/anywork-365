@@ -15,7 +15,10 @@ export function formatCurrency(amount: number): string {
 }
 
 export function getInitials(firstName: string, lastName: string): string {
-  return `${firstName[0]}${lastName[0]}`.toUpperCase()
+  const f = firstName?.[0] ?? ''
+  const l = lastName?.[0] ?? ''
+  if (!l) return `${f}${f || ''}`.toUpperCase()
+  return `${f}${l}`.toUpperCase()
 }
 
 export function timeAgo(dateString: string): string {

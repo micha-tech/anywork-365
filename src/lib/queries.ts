@@ -201,7 +201,7 @@ interface WithdrawalRow extends RowDataPacket {
 // ─── Transform helpers ────────────────────────────────────────────────────
 
 function userRowToAuthUser(row: UserRow): AuthUser {
-  const parts = row.fullName.split(' ')
+  const parts = row.fullName.trim().split(/\s+/)
   return {
     id: row.uid,
     email: row.email,
@@ -216,7 +216,7 @@ function userRowToAuthUser(row: UserRow): AuthUser {
 }
 
 function userRowToUser(row: UserRow): User {
-  const parts = row.fullName.split(' ')
+  const parts = row.fullName.trim().split(/\s+/)
   return {
     id: row.uid,
     firstName: parts[0] || '',

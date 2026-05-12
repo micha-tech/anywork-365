@@ -50,8 +50,8 @@ export function ChatList({ conversations, currentUserId, onSelect, selectedId }:
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                {getInitialsFromUser({ firstName: 'U', lastName: '' } as User)}
+              <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white text-sm font-medium flex-shrink-0 overflow-hidden">
+                <span className="leading-none">{getInitialsFromUser({ firstName: 'U', lastName: '' } as User)}</span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">

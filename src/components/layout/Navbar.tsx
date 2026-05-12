@@ -152,7 +152,7 @@ export function Navbar() {
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                       {user?.avatarUrl
                         ? <Image src={user.avatarUrl} alt={initials} width={32} height={32} className="w-full h-full object-cover" unoptimized={user.avatarUrl.startsWith('/uploads/')} />
-                        : initials}
+                        : <span className="leading-none">{initials}</span>}
                     </div>
                     <span className="text-sm font-medium text-text-primary">{user?.firstName}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -214,7 +214,7 @@ export function Navbar() {
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                   {user?.avatarUrl
                     ? <Image src={user.avatarUrl} alt={initials} width={32} height={32} className="w-full h-full object-cover" unoptimized={user.avatarUrl.startsWith('/uploads/')} />
-                    : initials}
+                    : <span className="leading-none">{initials}</span>}
                 </div>
               ) : pathname === '/' ? (
                 <Link href="/signup" className="btn-primary text-xs px-3 py-2 min-h-[36px]">

@@ -52,7 +52,7 @@ export function DashboardSidebar() {
               unoptimized={user.avatarUrl.startsWith('/uploads/')}
             />
           ) : (
-            initials
+            <span className="leading-none">{initials}</span>
           )}
         </div>
         <div className="min-w-0">
