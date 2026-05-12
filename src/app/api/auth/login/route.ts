@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { setSession } from '@/lib/auth'
+import { setSession, createSessionCookie } from '@/lib/auth'
 import { auth as adminAuth } from '@/lib/firebase/admin'
 import { getUserByUid } from '@/lib/queries'
 import type { ApiResponse, AuthUser } from '@/types'
@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    await setSession(profile)
+    const sessionCookie = await createSessionCookie(idToken)
+    if (!sessionCookie) throw new Error('Failed to create session')
+    await setSession(sessionCookie)
 
     return NextResponse.json<ApiResponse<AuthUser>>(
       { success: true, data: profile },

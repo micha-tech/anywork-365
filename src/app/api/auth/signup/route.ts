@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { setSession } from '@/lib/auth'
+import { setSession, createSessionCookie } from '@/lib/auth'
 import { auth as adminAuth } from '@/lib/firebase/admin'
 import { createUser, createBusiness, getUserByUid } from '@/lib/queries'
 import { signupSchema } from '@/lib/validators/auth'
@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
 
     const existing = await getUserByUid(uid)
     if (existing) {
-      await setSession(existing)
+      const sessionCookie = await createSessionCookie(idToken)
+      if (sessionCookie) await setSession(sessionCookie)
       return NextResponse.json<ApiResponse<AuthUser>>(
         { success: true, data: existing, message: 'Account already exists, logged in' },
         { status: 200 }
@@ -67,7 +68,9 @@ export async function POST(req: NextRequest) {
       city: city || 'Lagos',
     }
 
-    await setSession(authUser)
+    const sessionCookie = await createSessionCookie(idToken)
+    if (!sessionCookie) throw new Error('Failed to create session')
+    await setSession(sessionCookie)
 
     return NextResponse.json<ApiResponse<AuthUser>>(
       { success: true, data: authUser, message: 'Account created successfully' },

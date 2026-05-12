@@ -45,9 +45,9 @@ export async function getUserFromFirebase(uid: string): Promise<AuthUser | null>
   }
 }
 
-export async function setSession(user: AuthUser): Promise<void> {
+export async function setSession(sessionCookie: string): Promise<void> {
   const cookieStore = await cookies()
-  cookieStore.set(COOKIE_NAME, user.id, {
+  cookieStore.set(COOKIE_NAME, sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
