@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
-import { getSession, setSession } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { updateStoredProfile } from '@/lib/profileStore'
 import type { ApiResponse } from '@/types'
 
@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
     // ── Return public URL ───────────────────────────────────────────────────
     const publicUrl = `/uploads/${filename}`
     await updateStoredProfile(session.id, { avatarUrl: publicUrl })
-    await setSession({ ...session, avatarUrl: publicUrl })
 
     return NextResponse.json<ApiResponse<{ url: string }>>(
       { success: true, data: { url: publicUrl }, message: 'Photo uploaded successfully' },
