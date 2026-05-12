@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
         const type = metadata?.type
         const amountNGN = Math.floor(amount / 100)
 
-        if (userId && type === 'wallet_fund' && !hasSuccessfulTransactionReference(reference)) {
-          creditWallet(userId, amountNGN, reference)
+        if (userId && type === 'wallet_fund' && !(await hasSuccessfulTransactionReference(reference))) {
+          await creditWallet(userId, amountNGN, reference)
           console.log(`[WEBHOOK] Wallet credited: userId=${userId} amount=NGN ${amountNGN}`)
         }
         break
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       case 'transfer.success': {
         const transferCode = event.data.transfer_code
         if (transferCode) {
-          confirmWithdrawalSuccess(transferCode)
+          await confirmWithdrawalSuccess(transferCode)
           console.log(`[WEBHOOK] Withdrawal confirmed: ${transferCode}`)
         }
         break
@@ -60,10 +60,10 @@ export async function POST(req: NextRequest) {
       case 'transfer.reversed': {
         const transferCode = event.data.transfer_code
         console.warn(`[WEBHOOK] Transfer failed/reversed: ${transferCode}`)
-        const withdrawal = findPendingWithdrawal()
+        const withdrawal = await findPendingWithdrawal()
         
         if (withdrawal) {
-          rollbackWithdrawal(withdrawal.id, 'Transfer failed or reversed by Paystack')
+          await rollbackWithdrawal(withdrawal.id, 'Transfer failed or reversed by Paystack')
           console.log(`[WEBHOOK] Withdrawal rolled back: ${withdrawal.id}`)
         }
         break

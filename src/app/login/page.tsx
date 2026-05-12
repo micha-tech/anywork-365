@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, type LoginInput } from '@/lib/validators/auth'
-import { authApi } from '@/lib/api'
+import { signIn } from '@/lib/firebase/auth'
 import { BrandLogo } from '@/components/layout/BrandLogo'
 
 export default function LoginPage() {
@@ -22,12 +22,33 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginInput) {
     setServerError('')
-    const res = await authApi.login(data)
-    if (!res.success) {
-      setServerError(res.error ?? 'Login failed')
-      return
+
+    try {
+      const { data: result, error } = await signIn(data)
+
+      if (error || !result) {
+        setServerError(error?.message ?? 'Login failed')
+        return
+      }
+
+      const idToken = await result.user.getIdToken()
+
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json()
+        setServerError(body.error ?? 'Failed to establish session')
+        return
+      }
+
+      router.push('/dashboard')
+    } catch {
+      setServerError('An unexpected error occurred')
     }
-    router.push('/dashboard')
   }
 
   return (

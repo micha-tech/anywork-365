@@ -1,17 +1,15 @@
 import type { User } from '@/types'
-import { MOCK_PROFESSIONALS } from './mockData'
+import { getUserFullByUid } from './queries'
 
-// In-memory user store (shared with auth)
 const userStore: Map<string, User & { passwordHash: string }> = new Map()
 
-export function findUserById(id: string): User | undefined {
-  // Check mock professionals first
-  const mockUser = MOCK_PROFESSIONALS.find((u: User) => u.id === id)
-  if (mockUser) return mockUser
-  
-  // Check registered users
-  for (const user of userStore.values()) {
-    if (user.id === id) return user
+export async function findUserById(id: string): Promise<User | undefined> {
+  try {
+    const user = await getUserFullByUid(id)
+    if (user) return user
+  } catch {}
+  for (const u of userStore.values()) {
+    if (u.id === id) return u
   }
   return undefined
 }

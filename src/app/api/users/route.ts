@@ -1,16 +1,7 @@
-/**
- * GET /api/users
- * Get user by ID
- */
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { getSession } from '@/lib/auth'
-import { findUserById } from '@/lib/users'
-import type { ApiResponse, User } from '@/types'
-
-const schema = z.object({
-  id: z.string().min(1, 'User ID is required'),
-})
+import { getUserFullByUid } from '@/lib/queries'
+import type { ApiResponse } from '@/types'
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -29,7 +20,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const user = findUserById(id)
+  const user = await getUserFullByUid(id)
   if (!user) {
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: 'User not found' },

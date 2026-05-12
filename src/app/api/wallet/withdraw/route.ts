@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { amountNGN } = parsed.data
-    const wallet        = getOrCreateWallet(session.id)
+    const wallet        = await getOrCreateWallet(session.id)
 
     // Security: must have verified bank account
     if (!wallet.isVerified || !wallet.paystackRecipientCode) {
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Record the withdrawal (deducts from balance atomically)
-    const result = requestWithdrawal(session.id, amountNGN, {
+    const result = await requestWithdrawal(session.id, amountNGN, {
       accountNumber: wallet.bankAccountNumber!,
       bankCode:      wallet.bankCode!,
       bankName:      wallet.bankName!,
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     )
   } catch (err: unknown) {
     if (withdrawalId) {
-      rollbackWithdrawal(withdrawalId)
+      await rollbackWithdrawal(withdrawalId)
     }
 
     const message = err instanceof Error ? err.message : 'Withdrawal failed'

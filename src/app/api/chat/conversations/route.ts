@@ -30,11 +30,11 @@ interface EnrichedConversation extends ChatConversation {
   participantsInfo: Record<string, ParticipantInfo>
 }
 
-function enrichConversation(conv: ChatConversation, currentUserId: string): EnrichedConversation {
+async function enrichConversation(conv: ChatConversation, currentUserId: string): Promise<EnrichedConversation> {
   const participantsInfo: Record<string, ParticipantInfo> = {}
   for (const pid of conv.participants) {
     if (pid === currentUserId) continue
-    const user = findUserById(pid)
+    const user = await findUserById(pid)
     participantsInfo[pid] = {
       id: pid,
       firstName: user?.firstName ?? 'User',
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   const { userId } = parsed.data
   const conversation = getOrCreateConversation(session.id, userId)
-  const enriched = enrichConversation(conversation, session.id)
+  const enriched = await enrichConversation(conversation, session.id)
 
   return NextResponse.json({
     success: true,
@@ -87,7 +87,7 @@ export async function GET(_req: NextRequest) {
     }
 
     const conversations = getUserConversations(session.id)
-    const enriched = conversations.map(c => enrichConversation(c, session.id))
+    const enriched = await Promise.all(conversations.map(c => enrichConversation(c, session.id)))
     
     return NextResponse.json({
       success: true,

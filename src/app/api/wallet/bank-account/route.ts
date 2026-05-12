@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     const recipient = await createTransferRecipient({ accountName, accountNumber, bankCode })
     const recipientCode = recipient.data.recipient_code
 
-    const wallet = saveBankAccount(session.id, {
+    const wallet = await saveBankAccount(session.id, {
       accountNumber,
       bankCode,
       bankName,

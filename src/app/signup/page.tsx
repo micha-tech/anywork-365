@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { signupSchema, type SignupInput, COUNTRY_CODES } from '@/lib/validators/auth'
-import { authApi } from '@/lib/api'
+import { signUp } from '@/lib/firebase/auth'
 import { NIGERIAN_CITIES } from '@/types'
 import { cn } from '@/lib/utils'
 import { BrandLogo } from '@/components/layout/BrandLogo'
@@ -21,7 +21,6 @@ export default function SignupPage() {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignupInput>({ resolver: zodResolver(signupSchema), defaultValues: { role: 'client', countryCode: '+234' } })
 
@@ -32,12 +31,42 @@ export default function SignupPage() {
 
   async function onSubmit(data: SignupInput) {
     setServerError('')
-    const res = await authApi.signup(data)
-    if (!res.success) {
-      setServerError(res.error ?? 'Signup failed')
-      return
+
+    try {
+      const { data: result, user: fbUser, error } = await signUp({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        countryCode: data.countryCode,
+        nin: data.nin,
+        role: data.role,
+      })
+
+      if (error || !result || !fbUser) {
+        setServerError(error?.message ?? 'Signup failed')
+        return
+      }
+
+      const idToken = await fbUser.getIdToken()
+
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json()
+        setServerError(body.error ?? 'Failed to establish session')
+        return
+      }
+
+      router.push('/dashboard')
+    } catch {
+      setServerError('An unexpected error occurred')
     }
-    router.push('/dashboard')
   }
 
   return (

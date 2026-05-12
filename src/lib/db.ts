@@ -1,0 +1,40 @@
+import mysql from 'mysql2/promise'
+
+export type SqlValue = string | number | boolean | Date | null | Buffer
+
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST || 'localhost',
+  port: parseInt(process.env.MYSQL_PORT || '3306'),
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+})
+
+export async function query<T extends mysql.RowDataPacket[]>(
+  sql: string,
+  params?: SqlValue[]
+): Promise<T> {
+  const [rows] = await pool.execute<T>(sql, params as mysql.ExecuteValues)
+  return rows
+}
+
+export async function queryOne<T extends mysql.RowDataPacket[]>(
+  sql: string,
+  params?: SqlValue[]
+): Promise<T[number] | null> {
+  const rows = await query<T>(sql, params)
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function execute(
+  sql: string,
+  params?: SqlValue[]
+): Promise<mysql.ResultSetHeader> {
+  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params as mysql.ExecuteValues)
+  return result
+}
+
+export default pool

@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Credit only once even if the redirect endpoint is refreshed or the webhook also fires.
-    if (!hasSuccessfulTransactionReference(ref)) {
-      creditWallet(userId, amountNGN, ref)
+    if (!(await hasSuccessfulTransactionReference(ref))) {
+      await creditWallet(userId, amountNGN, ref)
     }
 
     return NextResponse.redirect(

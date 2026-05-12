@@ -1,20 +1,35 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { MOCK_JOBS } from '@/lib/mockData'
 import { Badge } from '@/components/ui'
 import { Modal } from '@/components/ui/Modal'
 import { formatCurrency, timeAgo } from '@/lib/utils'
+import type { Job } from '@/types'
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const job = MOCK_JOBS.find((j) => j.id === id)
+  const [job, setJob] = useState<Job | null>(null)
+  const [loading, setLoading] = useState(true)
   const [applyOpen, setApplyOpen] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  if (!job) notFound()
+  useEffect(() => {
+    fetch(`/api/jobs`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          const found = d.data.find((j: Job) => j.id === id)
+          if (found) setJob(found)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (!loading && !job) notFound()
+  if (loading || !job) return <div className="max-w-4xl mx-auto px-4 py-10"><div className="animate-pulse h-40 bg-gray-100 rounded-2xl" /></div>
 
   function handleApply(e: React.FormEvent) {
     e.preventDefault()
@@ -34,7 +49,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         </div>
       )}
 
-      {/* Mobile: budget sticky bar */}
       <div className="sm:hidden bg-white border border-ui-border rounded-2xl p-4 mb-4 flex items-center justify-between gap-4">
         <div>
           <p className="text-xs text-text-secondary">Budget</p>
@@ -50,7 +64,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Main content */}
         <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-5">
           <div className="card">
             <div className="flex items-start justify-between gap-3 mb-4">
@@ -90,7 +103,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Sidebar — desktop only */}
         <div className="hidden sm:flex flex-col gap-5">
           <div className="card">
             <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Budget</p>
@@ -140,7 +152,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* Apply Modal */}
       <Modal open={applyOpen} onClose={() => setApplyOpen(false)} title="Apply for this job">
         <form onSubmit={handleApply}>
           <div className="form-group">
@@ -149,7 +160,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               className="input-field resize-y"
               rows={5}
               required
-              placeholder="Introduce yourself and explain why you&apos;re the right fit. Mention relevant experience..."
+              placeholder="Introduce yourself and explain why you're the right fit. Mention relevant experience..."
             />
           </div>
           <div className="form-group">

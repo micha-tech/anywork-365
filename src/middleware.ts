@@ -1,37 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-// Routes that require authentication
-const PROTECTED_ROUTES = ['/dashboard']
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-// Routes that redirect to dashboard if already logged in
-const AUTH_ROUTES = ['/login', '/signup']
+  const protectedPaths = [
+    '/dashboard',
+    '/wallet',
+    '/messages',
+    '/settings',
+    '/post-job',
+    '/bookings',
+  ]
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  const token = req.cookies.get('aw365_session')?.value
+  const isProtectedPath = protectedPaths.some((p) => pathname.startsWith(p))
+  const isAuthPage = pathname === '/login' || pathname === '/signup'
 
-  const isProtected = PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
-  const isAuthRoute  = AUTH_ROUTES.includes(pathname)
+  const sessionCookie = request.cookies.get('__session')?.value
 
-  // Verify the session token
-  const user = token ? await verifyToken(token) : null
-
-  // Redirect unauthenticated users away from protected routes
-  if (isProtected && !user) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+  if (isProtectedPath && !sessionCookie) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from login/signup
-  if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+  if (isAuthPage && sessionCookie) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/signup'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

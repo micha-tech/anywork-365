@@ -1,28 +1,54 @@
 import Link from 'next/link'
-import { MOCK_JOBS } from '@/lib/mockData'
+import { listVacancies, getCompaniesByUid } from '@/lib/queries'
 import { JobCard } from '@/components/forms/JobCard'
 import { EmptyState } from '@/components/ui'
 import { JOB_CATEGORIES, NIGERIAN_CITIES } from '@/types'
+import type { Job, JobStatus, JobCategory } from '@/types'
+
+export const dynamic = 'force-dynamic'
 
 interface Props {
   searchParams?: Promise<{ search?: string; category?: string; city?: string }>
 }
 
+function vacancyToJob(v: Awaited<ReturnType<typeof listVacancies>>[number], companyName?: string, companyAddress?: string): Job {
+  return {
+    id: String(v.vacancy_id),
+    title: v.vacancy_title,
+    description: v.job_description,
+    category: 'Professional services' as JobCategory,
+    budget: 0,
+    city: v.vacancy_location,
+    status: v.closed ? 'completed' as JobStatus : 'open' as JobStatus,
+    timeline: 'flexible',
+    posterId: '',
+    posterName: companyName || '',
+    businessName: companyName || '',
+    businessAddress: companyAddress || '',
+    jobType: v.work_type === 'Remote' ? 'contract' as const : 'full-time' as const,
+    closingDate: v.closing_date || '',
+    applicationCount: 0,
+    createdAt: v.date_created,
+  }
+}
+
 export default async function JobsPage({ searchParams }: Props) {
   const { search, category, city } = (await searchParams) ?? {}
 
-  const filtered = MOCK_JOBS.filter((j) => {
-    const matchSearch = !search ||
-      j.title.toLowerCase().includes(search.toLowerCase()) ||
-      j.description.toLowerCase().includes(search.toLowerCase())
-    const matchCat  = !category || j.category === category
-    const matchCity = !city || j.city === city
-    return matchSearch && matchCat && matchCity
+  const vacancies = await listVacancies({
+    search,
+    location: city,
+    job_type: category,
   })
+
+  const jobs = await Promise.all(vacancies.map(async (v) => {
+    const companies = await getCompaniesByUid(String(v.company_id))
+    const company = companies[0]
+    return vacancyToJob(v, company?.company_name ?? undefined, company?.company_address ?? undefined)
+  }))
 
   return (
     <div>
-      {/* Header */}
       <div className="bg-white border-b border-ui-border px-4 sm:px-6 py-5 sm:py-7">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div>
@@ -36,7 +62,6 @@ export default async function JobsPage({ searchParams }: Props) {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Search + filters — stacks on mobile */}
         <form className="flex flex-col gap-2 sm:gap-3 mb-6" method="GET">
           <input
             name="search"
@@ -60,12 +85,11 @@ export default async function JobsPage({ searchParams }: Props) {
           </div>
         </form>
 
-        {/* Results */}
-        {filtered.length > 0 ? (
+        {jobs.length > 0 ? (
           <>
-            <p className="text-sm text-text-secondary mb-4">{filtered.length} jobs found</p>
+            <p className="text-sm text-text-secondary mb-4">{jobs.length} jobs found</p>
             <div className="flex flex-col gap-3 sm:gap-4">
-              {filtered.map((job) => (
+              {jobs.map((job) => (
                 <JobCard key={job.id} job={job} />
               ))}
             </div>

@@ -1,10 +1,6 @@
-/**
- * GET /api/wallet
- * Returns the authenticated user's wallet balance and info
- */
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { getOrCreateWallet, getUserTransactions } from '@/lib/wallet'
+import { getUserRowByUid, getWalletByUserId, getWalletBalance, getWalletLedger } from '@/lib/queries'
 import type { ApiResponse } from '@/types'
 
 export async function GET() {
@@ -16,11 +12,44 @@ export async function GET() {
     )
   }
 
-  const wallet       = getOrCreateWallet(session.id)
-  const transactions = getUserTransactions(session.id)
+  const user = await getUserRowByUid(session.id)
+  if (!user) {
+    return NextResponse.json<ApiResponse<null>>(
+      { success: false, error: 'User not found' },
+      { status: 404 }
+    )
+  }
 
-  return NextResponse.json(
-    { success: true, data: { wallet, transactions } },
-    { status: 200 }
-  )
+  const wallet = await getWalletByUserId(user.userId)
+  if (!wallet) {
+    return NextResponse.json(
+      { success: true, data: { wallet: null, transactions: [] } },
+      { status: 200 }
+    )
+  }
+
+  const balance = await getWalletBalance(wallet.id)
+  const ledger = await getWalletLedger(wallet.id)
+
+  const transactions = ledger.map((entry) => ({
+    id: String(entry.id),
+    type: entry.direction === 'credit' ? 'credit' as const : 'debit' as const,
+    amount: entry.amount,
+    description: entry.description ?? '',
+    createdAt: entry.created_at,
+  }))
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      wallet: {
+        id: String(wallet.id),
+        userId: session.id,
+        availableBalance: balance,
+        createdAt: wallet.created_at,
+        updatedAt: wallet.created_at,
+      },
+      transactions,
+    },
+  })
 }

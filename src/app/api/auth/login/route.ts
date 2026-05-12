@@ -1,67 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { loginSchema } from '@/lib/validators/auth'
-import { findUserByEmail } from '@/lib/mockData'
 import { setSession } from '@/lib/auth'
-import { verifyPassword } from '@/lib/auth-password'
+import { auth as adminAuth } from '@/lib/firebase/admin'
+import { getUserByUid } from '@/lib/queries'
 import type { ApiResponse, AuthUser } from '@/types'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-
-    // Validate input with Zod
-    const parsed = loginSchema.safeParse(body)
-    if (!parsed.success) {
+    const { idToken } = await req.json()
+    if (!idToken) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: parsed.error.errors[0].message },
+        { success: false, error: 'ID token is required' },
         { status: 400 }
       )
     }
 
-    const { email, password } = parsed.data
+    const decoded = await adminAuth.verifyIdToken(idToken)
+    const uid = decoded.uid
 
-    // ── In production: query your DB here ──────────────────────────
-    // const user = await db.user.findUnique({ where: { email } })
-    // For MVP/demo, accept a mock user or demo credentials
-    const mockUser = findUserByEmail(email)
-
-    // Demo shortcut: allow demo@anywork365.com / Demo1234
-    const isDemoLogin =
-      email === 'demo@anywork365.com' && password === 'Demo1234'
-
-    if (!mockUser && !isDemoLogin) {
+    const profile = await getUserByUid(uid)
+    if (!profile) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Invalid email or password' },
-        { status: 401 }
+        { success: false, error: 'User not found' },
+        { status: 404 }
       )
     }
 
-    // Verify hashed password (or demo bypass)
-    if (mockUser && !(await verifyPassword(password, mockUser.passwordHash))) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Invalid email or password' },
-        { status: 401 }
-      )
-    }
-
-    const authUser: AuthUser = isDemoLogin
-      ? { id: 'demo-user', email, firstName: 'Emeka', lastName: 'Obi', role: 'client' }
-      : { id: mockUser!.id, email, firstName: mockUser!.firstName, lastName: mockUser!.lastName, role: mockUser!.role }
-
-    // Set httpOnly session cookie
-    await setSession(authUser)
+    await setSession(profile)
 
     return NextResponse.json<ApiResponse<AuthUser>>(
-      { success: true, data: authUser, message: 'Login successful' },
+      { success: true, data: profile },
       { status: 200 }
     )
-  } catch (err) {
-    console.error('[AUTH LOGIN]', err)
+  } catch {
     return NextResponse.json<ApiResponse<null>>(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
+      { success: false, error: 'Invalid credentials' },
+      { status: 401 }
     )
   }
 }

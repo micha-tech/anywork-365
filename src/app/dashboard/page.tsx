@@ -1,10 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { MOCK_JOBS } from '@/lib/mockData'
 import { Badge } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import type { Job } from '@/types'
 
 const METRICS = [
   { label: 'Active Jobs',    value: '3',  change: '↑ 1 new this week' },
@@ -21,6 +22,16 @@ const RECENT_ACTIVITY = [
 
 export default function DashboardPage() {
   const { user, loading } = useCurrentUser()
+  const [recentJobs, setRecentJobs] = useState<Job[]>([])
+
+  useEffect(() => {
+    fetch('/api/jobs?limit=3')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success) setRecentJobs(res.data)
+      })
+      .catch(() => {})
+  }, [])
 
   const greeting = loading
     ? 'Good morning 👋'
@@ -70,7 +81,9 @@ export default function DashboardPage() {
             <Link href="/dashboard/jobs" className="text-xs text-brand-primary hover:underline">View all</Link>
           </div>
           <div className="divide-y divide-ui-border">
-            {MOCK_JOBS.slice(0, 3).map((job) => (
+            {recentJobs.length === 0 ? (
+              <p className="text-sm text-text-secondary py-4 text-center">No active jobs yet</p>
+            ) : recentJobs.map((job) => (
               <div key={job.id} className="py-3">
                 <p className="text-sm font-medium text-text-primary leading-snug">{job.title}</p>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">

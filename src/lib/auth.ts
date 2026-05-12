@@ -1,35 +1,52 @@
-import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import type { AuthUser } from '@/types'
+import { auth as adminAuth } from '@/lib/firebase/admin'
+import { getUserRowByUid } from '@/lib/queries'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? 'anywork365-dev-secret-change-in-production'
-)
-
-const COOKIE_NAME = 'aw365_session'
+const COOKIE_NAME = '__session'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 
-export async function createToken(payload: AuthUser): Promise<string> {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(JWT_SECRET)
+export async function createSessionCookie(idToken: string): Promise<string | null> {
+  try {
+    const expiresIn = COOKIE_MAX_AGE * 1000
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn })
+    return sessionCookie
+  } catch {
+    return null
+  }
 }
 
-export async function verifyToken(token: string): Promise<AuthUser | null> {
+export async function verifySessionCookie(sessionCookie: string) {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
-    return payload as unknown as AuthUser
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true)
+    return decodedClaims
+  } catch {
+    return null
+  }
+}
+
+export async function getUserFromFirebase(uid: string): Promise<AuthUser | null> {
+  try {
+    const user = await getUserRowByUid(uid)
+    if (!user) return null
+    return {
+      id: uid,
+      email: user.email,
+      firstName: user.fullName.split(' ')[0] || '',
+      lastName: user.fullName.split(' ').slice(1).join(' ') || '',
+      role: (user.role as AuthUser['role']) || 'client',
+      phone: user.phoneNumber,
+      city: user.city || '',
+      avatarUrl: user.imageUrl,
+    }
   } catch {
     return null
   }
 }
 
 export async function setSession(user: AuthUser): Promise<void> {
-  const token = await createToken(user)
   const cookieStore = await cookies()
-  cookieStore.set(COOKIE_NAME, token, {
+  cookieStore.set(COOKIE_NAME, user.id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -40,12 +57,28 @@ export async function setSession(user: AuthUser): Promise<void> {
 
 export async function getSession(): Promise<AuthUser | null> {
   const cookieStore = await cookies()
-  const token = cookieStore.get(COOKIE_NAME)?.value
-  if (!token) return null
-  return verifyToken(token)
+  const sessionCookie = cookieStore.get(COOKIE_NAME)?.value
+  if (!sessionCookie) return null
+
+  const decoded = await verifySessionCookie(sessionCookie)
+  if (!decoded) return null
+
+  return getUserFromFirebase(decoded.uid)
 }
 
 export async function clearSession(): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.delete(COOKIE_NAME)
+}
+
+export async function getFirebaseIdToken(): Promise<string | null> {
+  const { auth } = await import('@/lib/firebase/client')
+  if (!auth) return null
+  const user = auth.currentUser
+  if (!user) return null
+  try {
+    return await user.getIdToken()
+  } catch {
+    return null
+  }
 }

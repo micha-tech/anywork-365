@@ -24,8 +24,8 @@ const sendSchema = z.object({
   type: z.enum(['text', 'image', 'file']).optional(),
 })
 
-function enrichMessage(msg: ReturnType<typeof getMessages>[number]) {
-  const sender = findUserById(msg.senderId)
+async function enrichMessage(msg: ReturnType<typeof getMessages>[number]) {
+  const sender = await findUserById(msg.senderId)
   const senderInfo: ChatParticipantInfo | undefined = sender ? {
     id: sender.id,
     firstName: sender.firstName,
@@ -38,11 +38,11 @@ function enrichMessage(msg: ReturnType<typeof getMessages>[number]) {
   return { ...msg, senderInfo }
 }
 
-function enrichConversation(conv: ReturnType<typeof getUserConversations>[number], currentUserId: string) {
+async function enrichConversation(conv: ReturnType<typeof getUserConversations>[number], currentUserId: string) {
   const participantsInfo: Record<string, ChatParticipantInfo> = {}
   for (const pid of conv.participants) {
     if (pid === currentUserId) continue
-    const user = findUserById(pid)
+    const user = await findUserById(pid)
     participantsInfo[pid] = {
       id: pid,
       firstName: user?.firstName ?? 'User',
@@ -91,8 +91,8 @@ export async function GET(req: NextRequest) {
   markMessagesAsRead(conversationId, session.id)
 
   const messages = getMessages(conversationId)
-  const enrichedMessages = messages.map(enrichMessage)
-  const enrichedConversation = enrichConversation(conversation, session.id)
+  const enrichedMessages = await Promise.all(messages.map(enrichMessage))
+  const enrichedConversation = await enrichConversation(conversation, session.id)
 
   return NextResponse.json({
     success: true,
@@ -137,9 +137,9 @@ export async function POST(req: NextRequest) {
 
   const message = sendMessage(conversationId, session.id, content, type)
   const messages = getMessages(conversationId)
-  const enrichedMessages = messages.map(enrichMessage)
+  const enrichedMessages = await Promise.all(messages.map(enrichMessage))
   const conversations = getUserConversations(session.id)
-  const enrichedConversations = conversations.map(c => enrichConversation(c, session.id))
+  const enrichedConversations = await Promise.all(conversations.map(c => enrichConversation(c, session.id)))
 
   return NextResponse.json({
     success: true,

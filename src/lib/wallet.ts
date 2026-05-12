@@ -1,293 +1,147 @@
-/**
- * Wallet business logic — in-memory for MVP
- * Replace all store operations with DB calls (Prisma/Drizzle) in production
- *
- * Security model:
- *  - availableBalance: withdrawable funds
- *  - escrowBalance: locked until job marked complete
- *  - All mutations go through atomic functions to prevent race conditions
- *  - Every transaction is recorded with a unique reference
- *  - Withdrawal requires verified bank account
- *  - Rate limiting on funding/withdrawal attempts
- */
-
+import {
+  getUserRowByUid,
+  getWalletByUserId,
+  getOrCreateWallet as getOrCreateWalletDb,
+  getWalletBalance,
+  addLedgerEntry,
+  createWalletTransaction,
+  createWithdrawal,
+  saveWithdrawalAccount,
+  getWithdrawalAccounts,
+  getUserWithdrawals,
+} from '@/lib/queries'
 import type { Wallet, WalletTransaction, WithdrawalRequest } from '@/types'
 import { generateReference } from './paystack'
 
-// ─── In-memory stores (replace with DB in production) ────────────────────────
+interface BankDetails {
+  accountNumber: string
+  bankCode: string
+  bankName: string
+  accountName: string
+}
 
-const walletStore  = new Map<string, Wallet>()
-const txStore      = new Map<string, WalletTransaction>()
-const withdrawStore = new Map<string, WithdrawalRequest>()
-
-// ─── Rate limiting ────────────────────────────────────────────────────────────
-// Simple in-memory rate limit store (replace with Redis in production)
+// ─── In-memory rate limiter (stays in-memory, no DB dependency) ──────────
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute window
-const RATE_LIMIT_MAX = 5 // max 5 requests per window per endpoint
+const RATE_LIMIT_WINDOW = 60 * 1000
+const RATE_LIMIT_MAX = 5
 
-export function checkRateLimit(key: string, maxRequests = RATE_LIMIT_MAX, windowMs = RATE_LIMIT_WINDOW): { allowed: boolean; retryAfter?: number } {
+export function checkRateLimit(
+  key: string,
+  maxRequests = RATE_LIMIT_MAX,
+  windowMs = RATE_LIMIT_WINDOW
+): { allowed: boolean; retryAfter?: number } {
   const now = Date.now()
   const record = rateLimitStore.get(key)
-  
+
   if (!record || now > record.resetAt) {
     rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
     return { allowed: true }
   }
-  
+
   if (record.count >= maxRequests) {
     return { allowed: false, retryAfter: Math.ceil((record.resetAt - now) / 1000) }
   }
-  
+
   record.count++
   return { allowed: true }
 }
 
-// ─── Get or create wallet ─────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────
 
-export function getOrCreateWallet(userId: string): Wallet {
-  if (!walletStore.has(userId)) {
-    const wallet: Wallet = {
-      userId,
-      availableBalance: 0,
-      escrowBalance:    0,
-      totalEarned:      0,
-      isVerified:       false,
-      createdAt:        new Date().toISOString(),
-      updatedAt:        new Date().toISOString(),
-    }
-    walletStore.set(userId, wallet)
-  }
-  return walletStore.get(userId)!
-}
+async function resolveUserWallet(uid: string): Promise<{
+  user: NonNullable<Awaited<ReturnType<typeof getUserRowByUid>>>
+  wallet: NonNullable<Awaited<ReturnType<typeof getWalletByUserId>>>
+  walletId: number
+}> {
+  const user = await getUserRowByUid(uid)
+  if (!user) throw new Error('User not found')
 
-// ─── Record a transaction ─────────────────────────────────────────────────────
-
-export function recordTransaction(
-  tx: Omit<WalletTransaction, 'id' | 'createdAt'>
-): WalletTransaction {
-  const full: WalletTransaction = {
-    ...tx,
-    id:        `tx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    createdAt: new Date().toISOString(),
-  }
-  txStore.set(full.id, full)
-  return full
-}
-
-// ─── Get transaction history for a user ──────────────────────────────────────
-
-export function getUserTransactions(userId: string): WalletTransaction[] {
-  return Array.from(txStore.values())
-    .filter((tx) => tx.userId === userId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-}
-
-export function hasSuccessfulTransactionReference(reference: string): boolean {
-  return Array.from(txStore.values()).some(
-    (tx) => tx.reference === reference && tx.status === 'success'
-  )
-}
-
-// ─── Lock funds in escrow (called when client pays for a job) ─────────────────
-
-export function lockEscrow(clientId: string, amountNGN: number, jobId: string): WalletTransaction {
-  const wallet = getOrCreateWallet(clientId)
-
-  // Deduct from client's available balance
-  wallet.availableBalance -= amountNGN
-  wallet.escrowBalance    += amountNGN
-  wallet.updatedAt         = new Date().toISOString()
-  walletStore.set(clientId, wallet)
-
-  return recordTransaction({
-    userId:      clientId,
-    type:        'escrow_lock',
-    amount:      amountNGN * 100,
-    amountNGN,
-    description: `Payment locked in escrow for job #${jobId}`,
-    reference:   generateReference('ESC'),
-    status:      'success',
-    metadata:    { jobId },
-  })
-}
-
-// ─── Release escrow to professional (called when job is completed) ────────────
-
-export function releaseEscrow(
-  clientId: string,
-  proId: string,
-  amountNGN: number,
-  jobId: string
-): { clientTx: WalletTransaction; proTx: WalletTransaction } {
-  // Platform fee: 5% of transaction
-  const PLATFORM_FEE_PERCENT = 5
-  const platformFee           = Math.round(amountNGN * PLATFORM_FEE_PERCENT / 100)
-  const proAmount             = amountNGN - platformFee
-
-  // Deduct escrow from client
-  const clientWallet = getOrCreateWallet(clientId)
-  clientWallet.escrowBalance -= amountNGN
-  clientWallet.updatedAt      = new Date().toISOString()
-  walletStore.set(clientId, clientWallet)
-
-  // Credit pro's available balance
-  const proWallet = getOrCreateWallet(proId)
-  proWallet.availableBalance += proAmount
-  proWallet.totalEarned      += proAmount
-  proWallet.updatedAt         = new Date().toISOString()
-  walletStore.set(proId, proWallet)
-
-  const ref = generateReference('REL')
-
-  const clientTx = recordTransaction({
-    userId:      clientId,
-    type:        'escrow_release',
-    amount:      amountNGN * 100,
-    amountNGN,
-    description: `Escrow released for job #${jobId}`,
-    reference:   ref,
-    status:      'success',
-    metadata:    { jobId, proId },
-  })
-
-  // Also credit pro's wallet for job earnings
-  const proTx = creditWallet(proId, proAmount, generateReference('PAY'), true)
-
-  return { clientTx, proTx }
-}
-
-// ─── Credit wallet after successful Paystack payment ─────────────────────────
-
-export function creditWallet(userId: string, amountNGN: number, reference: string, isJobEarnings = false): WalletTransaction {
-  const existing = Array.from(txStore.values()).find(
-    (tx) => tx.reference === reference && (tx.type === 'credit' || tx.type === 'earning')
-  )
-  if (existing) {
-    return existing
+  let wallet = await getWalletByUserId(user.userId)
+  if (!wallet) {
+    wallet = await getOrCreateWalletDb(user.userId, user.email)
   }
 
-  const wallet = getOrCreateWallet(userId)
-  wallet.availableBalance += amountNGN
-  if (isJobEarnings) {
-    wallet.totalEarned += amountNGN
-  }
-  wallet.updatedAt         = new Date().toISOString()
-  walletStore.set(userId, wallet)
-
-  return recordTransaction({
-    userId,
-    type:        isJobEarnings ? 'earning' : 'credit',
-    amount:      amountNGN * 100,
-    amountNGN,
-    description: isJobEarnings ? 'Job earnings received' : 'Wallet funded via Paystack',
-    reference,
-    status:      'success',
-  })
+  return { user, wallet, walletId: wallet.id }
 }
 
-// ─── Request a withdrawal ─────────────────────────────────────────────────────
+// ─── Get or create wallet ───────────────────────────────────────────────
 
-export function requestWithdrawal(
+export async function getOrCreateWallet(uid: string): Promise<Wallet> {
+  const { wallet } = await resolveUserWallet(uid)
+  const balance = await getWalletBalance(wallet.id)
+
+  return {
+    userId: uid,
+    availableBalance: balance,
+    escrowBalance: 0,
+    totalEarned: 0,
+    isVerified: false,
+    createdAt: wallet.created_at,
+    updatedAt: wallet.created_at,
+  }
+}
+
+// ─── Credit wallet after successful Paystack payment ────────────────────
+
+export async function creditWallet(
   userId: string,
   amountNGN: number,
-  bankDetails: { accountNumber: string; bankCode: string; bankName: string; accountName: string }
-): WithdrawalRequest | { error: string } {
-  const wallet = getOrCreateWallet(userId)
+  reference: string,
+  _isJobEarnings = false
+): Promise<WalletTransaction> {
+  const { walletId } = await resolveUserWallet(userId)
 
-  // Security: can't withdraw more than available balance
-  if (amountNGN > wallet.availableBalance) {
-    return { error: 'Insufficient available balance' }
-  }
+  const balance = await getWalletBalance(walletId)
+  const newBalance = balance + amountNGN
 
-  // Security: minimum withdrawal
-  if (amountNGN < 500) {
-    return { error: 'Minimum withdrawal amount is ₦500' }
-  }
+  await addLedgerEntry({
+    wallet_id: walletId,
+    amount: amountNGN,
+    direction: 'credit',
+    balance_after: newBalance,
+    description: _isJobEarnings ? 'Job earnings received' : 'Wallet funded via Paystack',
+  })
 
-  // Security: bank account must be verified
-  if (!wallet.isVerified) {
-    return { error: 'Please verify your bank account before withdrawing' }
-  }
+  await createWalletTransaction({
+    reference,
+    type: _isJobEarnings ? 'earning' : 'credit',
+    status: 'success',
+    metadata: JSON.stringify({ userId, source: 'paystack' }),
+  })
 
-  // Deduct immediately to prevent double-spend
-  wallet.availableBalance -= amountNGN
-  wallet.updatedAt         = new Date().toISOString()
-  walletStore.set(userId, wallet)
-
-  const withdrawal: WithdrawalRequest = {
-    id:                `wd-${Date.now()}`,
+  return {
+    id: reference,
     userId,
-    amount:            amountNGN,
-    amountKobo:        amountNGN * 100,
-    bankAccountNumber: bankDetails.accountNumber,
-    bankCode:          bankDetails.bankCode,
-    bankName:          bankDetails.bankName,
-    accountName:       bankDetails.accountName,
-    status:            'pending',
-    createdAt:         new Date().toISOString(),
-    updatedAt:         new Date().toISOString(),
-  }
-  withdrawStore.set(withdrawal.id, withdrawal)
-
-  // Record the debit transaction
-  recordTransaction({
-    userId,
-    type:        'debit',
-    amount:      amountNGN * 100,
+    type: _isJobEarnings ? 'earning' : 'credit',
+    amount: amountNGN * 100,
     amountNGN,
-    description: `Withdrawal to ${bankDetails.bankName} ••••${bankDetails.accountNumber.slice(-4)}`,
-    reference:   generateReference('WD'),
-    status:      'pending',
-    metadata:    { withdrawalId: withdrawal.id },
-  })
-
-  return withdrawal
+    description: _isJobEarnings ? 'Job earnings received' : 'Wallet funded via Paystack',
+    reference,
+    status: 'success',
+    createdAt: new Date().toISOString(),
+  }
 }
 
-export function rollbackWithdrawal(withdrawalId: string, reason = 'Transfer failed'): WithdrawalRequest | null {
-  const withdrawal = withdrawStore.get(withdrawalId)
-  if (!withdrawal || withdrawal.status === 'failed') {
-    return withdrawal ?? null
+// ─── Check for duplicate reference ──────────────────────────────────────
+
+export async function hasSuccessfulTransactionReference(
+  reference: string
+): Promise<boolean> {
+  try {
+    const { query } = await import('@/lib/db')
+    const rows = await query(
+      'SELECT 1 FROM wallet_transactions WHERE reference = ? AND status = ? LIMIT 1',
+      [reference, 'success']
+    ) as { '1'?: number }[]
+    return rows.length > 0
+  } catch {
+    return false
   }
-
-  const wallet = getOrCreateWallet(withdrawal.userId)
-  wallet.availableBalance += withdrawal.amount
-  wallet.updatedAt         = new Date().toISOString()
-  walletStore.set(withdrawal.userId, wallet)
-
-  withdrawal.status    = 'failed'
-  withdrawal.updatedAt = new Date().toISOString()
-  withdrawal.reason    = reason
-  withdrawStore.set(withdrawalId, withdrawal)
-
-  const debitTx = Array.from(txStore.values()).find(
-    (tx) => tx.metadata?.withdrawalId === withdrawalId && tx.type === 'debit'
-  )
-
-  if (debitTx) {
-    debitTx.status      = 'failed'
-    debitTx.description = `${debitTx.description} (${reason})`
-    txStore.set(debitTx.id, debitTx)
-  }
-
-  recordTransaction({
-    userId:      withdrawal.userId,
-    type:        'refund',
-    amount:      withdrawal.amountKobo,
-    amountNGN:   withdrawal.amount,
-    description: `Withdrawal reversal - ${reason}`,
-    reference:   generateReference('WDR'),
-    status:      'success',
-    metadata:    { withdrawalId },
-  })
-
-  return withdrawal
 }
 
-// ─── Verify & save bank account ───────────────────────────────────────────────
+// ─── Save bank account ──────────────────────────────────────────────────
 
-export function saveBankAccount(
+export async function saveBankAccount(
   userId: string,
   bankDetails: {
     accountNumber: string
@@ -295,82 +149,307 @@ export function saveBankAccount(
     bankName: string
     recipientCode: string
   }
-): Wallet {
-  const wallet = getOrCreateWallet(userId)
-  wallet.bankAccountNumber       = bankDetails.accountNumber
-  wallet.bankCode                = bankDetails.bankCode
-  wallet.bankName                = bankDetails.bankName
-  wallet.paystackRecipientCode   = bankDetails.recipientCode
-  wallet.isVerified              = true
-  wallet.updatedAt               = new Date().toISOString()
-  walletStore.set(userId, wallet)
-  return wallet
+): Promise<Wallet> {
+  const userRow = await getUserRowByUid(userId)
+  if (!userRow) throw new Error('User not found')
+
+  await saveWithdrawalAccount({
+    user_id: userRow.userId,
+    bank_name: bankDetails.bankName,
+    bank_code: bankDetails.bankCode,
+    account_number: bankDetails.accountNumber,
+    account_name: '',
+  })
+
+  return getOrCreateWallet(userId)
 }
 
-// ─── Get withdrawal history ───────────────────────────────────────────────────
+// ─── Request a withdrawal ───────────────────────────────────────────────
 
-export function getUserWithdrawals(userId: string): WithdrawalRequest[] {
-  return Array.from(withdrawStore.values())
-    .filter((w) => w.userId === userId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+export async function requestWithdrawal(
+  userId: string,
+  amountNGN: number,
+  bankDetails: BankDetails
+): Promise<WithdrawalRequest | { error: string }> {
+  const { user, walletId } = await resolveUserWallet(userId)
+
+  const balance = await getWalletBalance(walletId)
+
+  if (amountNGN > balance) {
+    return { error: `Insufficient available balance` }
+  }
+
+  if (amountNGN < 500) {
+    return { error: 'Minimum withdrawal amount is ₦500' }
+  }
+
+  const newBalance = balance - amountNGN
+
+  const accounts = await getWithdrawalAccounts(user.userId)
+  if (accounts.length === 0) {
+    return { error: 'Please verify your bank account before withdrawing' }
+  }
+
+  await addLedgerEntry({
+    wallet_id: walletId,
+    amount: amountNGN,
+    direction: 'debit',
+    balance_after: newBalance,
+    description: `Withdrawal to ${bankDetails.bankName} ••••${bankDetails.accountNumber.slice(-4)}`,
+  })
+
+  const withdrawalId = await createWithdrawal({
+    user_id: user.userId,
+    amount: amountNGN,
+    account_id: accounts[0].id,
+  })
+
+  return {
+    id: String(withdrawalId),
+    userId,
+    amount: amountNGN,
+    amountKobo: amountNGN * 100,
+    bankAccountNumber: bankDetails.accountNumber,
+    bankCode: bankDetails.bankCode,
+    bankName: bankDetails.bankName,
+    accountName: bankDetails.accountName,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
 }
 
-// ─── Confirm withdrawal success ───────────────────────────────────────────────
+// ─── Rollback withdrawal ────────────────────────────────────────────────
 
-export function confirmWithdrawalSuccess(_transferCode: string): WithdrawalRequest | null {
-  const withdrawal = Array.from(withdrawStore.values())
-    .find((w) => w.status === 'pending')
-  
-  if (!withdrawal) {
+export async function rollbackWithdrawal(
+  withdrawalId: string,
+  reason = 'Transfer failed'
+): Promise<void> {
+  try {
+    const { query, execute } = await import('@/lib/db')
+    const rows = await query(
+      'SELECT * FROM withdrawals WHERE id = ?',
+      [withdrawalId]
+    ) as { user_id: number; amount: number; status: string; id: number }[]
+    const withdrawal = rows[0]
+    if (!withdrawal || withdrawal.status === 'failed') return
+
+    const wallet = await getWalletByUserId(withdrawal.user_id)
+    if (!wallet) return
+
+    const balance = await getWalletBalance(wallet.id)
+    await addLedgerEntry({
+      wallet_id: wallet.id,
+      amount: withdrawal.amount,
+      direction: 'credit',
+      balance_after: balance + withdrawal.amount,
+      description: `Withdrawal reversal - ${reason}`,
+    })
+
+    await execute(
+      'UPDATE withdrawals SET status = ? WHERE id = ?',
+      ['failed', withdrawal.id]
+    )
+  } catch (err) {
+    console.error('[ROLLBACK WITHDRAWAL ERROR]', err)
+  }
+}
+
+// ─── Get withdrawal history ─────────────────────────────────────────────
+
+export async function getUserWithdrawalsList(userId: string): Promise<WithdrawalRequest[]> {
+  const user = await getUserRowByUid(userId)
+  if (!user) return []
+
+  const rows = await getUserWithdrawals(user.userId)
+  return rows.map((r) => ({
+    id: String(r.id),
+    userId,
+    amount: r.amount,
+    amountKobo: r.amount * 100,
+    bankAccountNumber: '',
+    bankCode: '',
+    bankName: '',
+    accountName: '',
+    status: r.status as WithdrawalRequest['status'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }))
+}
+
+// ─── Confirm withdrawal success ─────────────────────────────────────────
+
+export async function confirmWithdrawalSuccess(_transferCode: string): Promise<void> {
+  try {
+    const { query, execute } = await import('@/lib/db')
+    const rows = await query(
+      'SELECT id FROM withdrawals WHERE status = ? LIMIT 1',
+      ['pending']
+    ) as { id: number }[]
+    const wd = rows[0]
+    if (wd) {
+      await execute('UPDATE withdrawals SET status = ? WHERE id = ?', ['paid', wd.id])
+    }
+  } catch (err) {
+    console.error('[CONFIRM WITHDRAWAL ERROR]', err)
+  }
+}
+
+// ─── Find pending withdrawal ────────────────────────────────────────────
+
+export async function findPendingWithdrawal(): Promise<WithdrawalRequest | null> {
+  try {
+    const { query } = await import('@/lib/db')
+    const rows = await query(
+      'SELECT * FROM withdrawals WHERE status = ? ORDER BY created_at DESC LIMIT 1',
+      ['pending']
+    ) as { id: number; user_id: number; amount: number; status: string }[]
+    const wd = rows[0]
+    if (!wd) return null
+
+    return {
+      id: String(wd.id),
+      userId: String(wd.user_id),
+      amount: wd.amount,
+      amountKobo: wd.amount * 100,
+      bankAccountNumber: '',
+      bankCode: '',
+      bankName: '',
+      accountName: '',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+  } catch {
     return null
   }
-
-  withdrawal.status    = 'paid'
-  withdrawal.updatedAt = new Date().toISOString()
-  withdrawStore.set(withdrawal.id, withdrawal)
-
-  const debitTx = Array.from(txStore.values()).find(
-    (tx) => tx.metadata?.withdrawalId === withdrawal.id && tx.type === 'debit'
-  )
-
-  if (debitTx) {
-    debitTx.status = 'success'
-    txStore.set(debitTx.id, debitTx)
-  }
-
-  return withdrawal
 }
 
-// ─── Credit user for refund (failed transfer rollback) ─────────────────────────
+// ─── Lock escrow ────────────────────────────────────────────────────────
 
-export function creditUser(userId: string, amountNGN: number, reference: string, description: string): WalletTransaction {
-  const existing = Array.from(txStore.values()).find(
-    (tx) => tx.reference === reference
-  )
-  if (existing) {
-    return existing
+export async function lockEscrow(
+  clientId: string,
+  amountNGN: number,
+  jobId: string
+): Promise<WalletTransaction> {
+  const { walletId } = await resolveUserWallet(clientId)
+
+  const balance = await getWalletBalance(walletId)
+  const newBalance = balance - amountNGN
+
+  await addLedgerEntry({
+    wallet_id: walletId,
+    amount: amountNGN,
+    direction: 'debit',
+    balance_after: newBalance,
+    description: `Payment locked in escrow for job #${jobId}`,
+  })
+
+  const ref = generateReference('ESC')
+
+  return {
+    id: ref,
+    userId: clientId,
+    type: 'escrow_lock',
+    amount: amountNGN * 100,
+    amountNGN,
+    description: `Payment locked in escrow for job #${jobId}`,
+    reference: ref,
+    status: 'success',
+    createdAt: new Date().toISOString(),
+  }
+}
+
+// ─── Release escrow ─────────────────────────────────────────────────────
+
+export async function releaseEscrow(
+  clientId: string,
+  proId: string,
+  amountNGN: number,
+  jobId: string
+): Promise<{ clientTx: WalletTransaction; proTx: WalletTransaction }> {
+  const { walletId: clientWalletId } = await resolveUserWallet(clientId)
+  const { walletId: proWalletId } = await resolveUserWallet(proId)
+
+  const PLATFORM_FEE_PERCENT = 5
+  const platformFee = Math.round(amountNGN * PLATFORM_FEE_PERCENT / 100)
+  const proAmount = amountNGN - platformFee
+
+  const clientBalance = await getWalletBalance(clientWalletId)
+  await addLedgerEntry({
+    wallet_id: clientWalletId,
+    amount: amountNGN,
+    direction: 'debit',
+    balance_after: clientBalance - amountNGN,
+    description: `Escrow released for job #${jobId}`,
+  })
+
+  const proBalance = await getWalletBalance(proWalletId)
+  await addLedgerEntry({
+    wallet_id: proWalletId,
+    amount: proAmount,
+    direction: 'credit',
+    balance_after: proBalance + proAmount,
+    description: `Job earnings - job #${jobId}`,
+  })
+
+  const ref = generateReference('REL')
+
+  const clientTx: WalletTransaction = {
+    id: ref,
+    userId: clientId,
+    type: 'escrow_release',
+    amount: amountNGN * 100,
+    amountNGN,
+    description: `Escrow released for job #${jobId}`,
+    reference: ref,
+    status: 'success',
+    createdAt: new Date().toISOString(),
   }
 
-  const wallet = getOrCreateWallet(userId)
-  wallet.availableBalance += amountNGN
-  wallet.updatedAt         = new Date().toISOString()
-  walletStore.set(userId, wallet)
+  const proTx: WalletTransaction = {
+    id: generateReference('PAY'),
+    userId: proId,
+    type: 'earning',
+    amount: proAmount * 100,
+    amountNGN: proAmount,
+    description: `Job earnings - job #${jobId}`,
+    reference: generateReference('PAY'),
+    status: 'success',
+    createdAt: new Date().toISOString(),
+  }
 
-  return recordTransaction({
+  return { clientTx, proTx }
+}
+
+// ─── Credit user for refund ─────────────────────────────────────────────
+
+export async function creditUser(
+  userId: string,
+  amountNGN: number,
+  reference: string,
+  description: string
+): Promise<WalletTransaction> {
+  const { walletId } = await resolveUserWallet(userId)
+
+  const balance = await getWalletBalance(walletId)
+  await addLedgerEntry({
+    wallet_id: walletId,
+    amount: amountNGN,
+    direction: 'credit',
+    balance_after: balance + amountNGN,
+    description,
+  })
+
+  return {
+    id: reference,
     userId,
-    type:        'refund',
-    amount:      amountNGN * 100,
+    type: 'refund',
+    amount: amountNGN * 100,
     amountNGN,
     description,
     reference,
-    status:      'success',
-  })
-}
-
-// ─── Find pending withdrawal for webhook ──────────────────────────────────────
-
-export function findPendingWithdrawal(): WithdrawalRequest | null {
-  const pending = Array.from(withdrawStore.values())
-    .find((w) => w.status === 'pending')
-  return pending ?? null
+    status: 'success',
+    createdAt: new Date().toISOString(),
+  }
 }

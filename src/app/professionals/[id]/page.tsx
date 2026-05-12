@@ -1,52 +1,43 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { notFound } from 'next/navigation'
-import { MOCK_PROFESSIONALS } from '@/lib/mockData'
 import { Avatar, Badge, Stars } from '@/components/ui'
 import { Modal } from '@/components/ui/Modal'
 import { getInitials } from '@/lib/utils'
-
-const MOCK_REVIEWS = [
-  { 
-    name: 'Mr Chukwu', 
-    overallRating: 5, 
-    ratings: { quality: 5, punctuality: 5, communication: 5, value: 4 },
-    text: 'Excellent work, very professional and punctual. Would hire again.', 
-    date: '2 weeks ago' 
-  },
-  { 
-    name: 'Mrs Bello',  
-    overallRating: 5, 
-    ratings: { quality: 5, punctuality: 4, communication: 5, value: 5 },
-    text: 'Did a fantastic job. Clean work and finished on time.',            
-    date: '1 month ago' 
-  },
-  { 
-    name: 'Alhaji K.',  
-    overallRating: 4, 
-    ratings: { quality: 4, punctuality: 4, communication: 4, value: 4 },
-    text: 'Good work overall. Communicated well throughout the project.',     
-    date: '2 months ago' 
-  },
-]
+import type { User } from '@/types'
 
 export default function ProDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id }  = use(params)
   const router = useRouter()
-  const pro     = MOCK_PROFESSIONALS.find((p) => p.id === id)
+  const [pro, setPro] = useState<User | null>(null)
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [bookOpen, setBookOpen] = useState(false)
   const [booked,   setBooked]   = useState(false)
   const [startingChat, setStartingChat] = useState(false)
   const [calling, setCalling] = useState<'voice' | 'video' | null>(null)
   const [quickConnecting, setQuickConnecting] = useState(false)
 
-  if (!pro) notFound()
+  useEffect(() => {
+    fetch(`/api/professionals/${id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          setPro(d.data.vendor)
+          setReviews(d.data.reviews)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (!loading && !pro) notFound()
+  if (loading || !pro) return <div className="max-w-4xl mx-auto px-4 py-10"><div className="animate-pulse h-40 bg-gray-100 rounded-2xl" /></div>
 
   const initials    = getInitials(pro.firstName, pro.lastName)
-  const colorIndex  = MOCK_PROFESSIONALS.indexOf(pro)
 
   function handleBook(e: React.FormEvent) {
     e.preventDefault()
@@ -83,11 +74,10 @@ function handleCall(type: 'voice' | 'video') {
     }
     setCalling(type)
     const phone = pro.phone
-    const countryCode = pro.countryCode
     
     setTimeout(() => {
       try {
-        const phoneNumber = formatPhoneForWhatsApp(phone, countryCode)
+        const phoneNumber = formatPhoneForWhatsApp(phone)
         let url: string
         
         if (type === 'video') {
@@ -106,18 +96,12 @@ function handleCall(type: 'voice' | 'video') {
     }, 300)
   }
 
-  function formatPhoneForWhatsApp(phone: string, countryCode?: string): string {
+  function formatPhoneForWhatsApp(phone: string): string {
     let cleaned = phone.replace(/\D/g, '')
     if (cleaned.startsWith('0')) {
       cleaned = cleaned.substring(1)
     }
-    if (!countryCode) {
-      countryCode = '+234'
-    }
-    if (!countryCode.startsWith('+')) {
-      countryCode = '+' + countryCode.replace(/\D/g, '')
-    }
-    return countryCode + cleaned
+    return '+234' + cleaned
   }
 
   function handleQuickConnect() {
@@ -127,11 +111,10 @@ function handleCall(type: 'voice' | 'video') {
     }
     setQuickConnecting(true)
     const phone = pro.phone
-    const countryCode = pro.countryCode
     
     setTimeout(() => {
       try {
-        const phoneNumber = formatPhoneForWhatsApp(phone, countryCode)
+        const phoneNumber = formatPhoneForWhatsApp(phone)
         const message = encodeURIComponent(`Hi ${pro.firstName}, I found your profile on Anywork365 and I'm interested in your services. Can we discuss?`)
         const url = `https://wa.me/${phoneNumber.replace('+', '')}?text=${message}`
         
@@ -150,6 +133,8 @@ function handleCall(type: 'voice' | 'video') {
     }, 500)
   }
 
+  const colorIndex = 0
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       <Link href="/professionals" className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-brand-primary mb-5">
@@ -162,55 +147,70 @@ function handleCall(type: 'voice' | 'video') {
         </div>
       )}
 
-      {/* Mobile: sticky action bar */}
-      <div className="sm:hidden bg-white border border-ui-border rounded-2xl p-4 mb-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Avatar initials={initials} size="md" colorIndex={colorIndex} />
-            {pro.isVerified && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-ui-border p-3 z-50 pb-safe">
+        <div className="flex items-center justify-between gap-2 max-w-lg mx-auto">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleCall('voice')}
+              disabled={calling !== null}
+              className="w-11 h-11 rounded-full bg-brand-light flex items-center justify-center disabled:opacity-50"
+            >
+              {calling === 'voice' ? (
+                <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 8V5z" />
                 </svg>
-              </div>
-            )}
+              )}
+            </button>
+            <button
+              onClick={() => handleCall('video')}
+              disabled={calling !== null}
+              className="w-11 h-11 rounded-full bg-brand-light flex items-center justify-center disabled:opacity-50"
+            >
+              {calling === 'video' ? (
+                <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={handleQuickConnect}
+              disabled={quickConnecting}
+              className="w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center disabled:opacity-50"
+            >
+              {quickConnecting ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                </svg>
+              )}
+            </button>
           </div>
-          <div>
-            <p className="text-sm font-medium">{pro.firstName} {pro.lastName}</p>
-            {pro.rating && <Stars rating={pro.rating} />}
-          </div>
+          <button
+            onClick={() => setBookOpen(true)}
+            disabled={booked}
+            className="btn-primary px-5 py-2.5 flex-shrink-0"
+          >
+            {booked ? 'Requested \u2713' : 'Book Now'}
+          </button>
         </div>
-        <button
-          onClick={() => setBookOpen(true)}
-          disabled={booked}
-          className="btn-primary px-5 py-2.5 flex-shrink-0"
-        >
-          {booked ? 'Requested ✓' : 'Book Now'}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Main */}
         <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-5">
-          {/* Header card */}
           <div className="card">
             <div className="flex items-start gap-4">
               <div className="relative flex-shrink-0">
                 <Avatar initials={initials} size="lg" colorIndex={colorIndex} className="mb-4" />
-                {pro.verificationTier && (
-                  <div className={`absolute -bottom-2 left-8 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white ${
-                    pro.verificationTier === 'premium' ? 'bg-amber-500' : 
-                    pro.verificationTier === 'verified' ? 'bg-blue-500' : 'bg-gray-400'
-                  }`}>
-                    {pro.verificationTier === 'premium' ? (
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" fill="none"/>
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                      </svg>
-                    )}
+                {pro.isVerified && (
+                  <div className="absolute -bottom-2 left-8 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white bg-blue-500">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                    </svg>
                   </div>
                 )}
               </div>
@@ -219,16 +219,8 @@ function handleCall(type: 'voice' | 'video') {
                   <h1 className="font-display text-lg sm:text-xl font-semibold">
                     {pro.firstName} {pro.lastName}
                   </h1>
-                  {pro.isFeatured && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.798 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.798-2.034a1 1 0 00-1.175 0l-2.798 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      Featured
-                    </span>
-                  )}
                 </div>
-                <p className="text-sm text-text-secondary mt-0.5">{pro.skills?.[0]} · {pro.city}</p>
+                <p className="text-sm text-text-secondary mt-0.5">{pro.skills?.[0]} \u00B7 {pro.city}</p>
                 {pro.rating && (
                   <div className="mt-2">
                     <Stars rating={pro.rating} count={pro.reviewCount} />
@@ -250,53 +242,26 @@ function handleCall(type: 'voice' | 'video') {
             )}
           </div>
 
-          {/* Reviews */}
           <div className="card">
             <h2 className="font-medium text-base mb-4">
               Reviews{' '}
               <span className="text-text-secondary font-normal text-sm">({pro.reviewCount})</span>
             </h2>
             <div className="divide-y divide-ui-border">
-              {MOCK_REVIEWS.map((r, i) => (
+              {reviews.length > 0 ? reviews.map((r: any, i: number) => (
                 <div key={i} className="py-4">
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600">
-                        {r.name[0]}
-                      </div>
-                      <span className="text-sm font-medium">{r.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Stars rating={r.overallRating} />
-                      <span className="text-xs text-text-secondary">{r.date}</span>
-                    </div>
+                    <span className="text-sm font-medium">{r.review}</span>
+                    <span className="text-xs text-text-secondary">{r.dateAdded || ''}</span>
                   </div>
-                  <div className="flex flex-wrap gap-3 text-xs text-text-secondary mb-2">
-                    <span className="flex items-center gap-1">
-                      <span className="text-gray-400">Quality:</span>
-                      <Stars rating={r.ratings.quality} />
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-gray-400">Time:</span>
-                      <Stars rating={r.ratings.punctuality} />
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-gray-400">Comms:</span>
-                      <Stars rating={r.ratings.communication} />
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-gray-400">Value:</span>
-                      <Stars rating={r.ratings.value} />
-                    </span>
-                  </div>
-                  <p className="text-sm text-text-secondary leading-relaxed">{r.text}</p>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-text-secondary py-4">No reviews yet</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Sidebar — desktop only */}
         <div className="hidden sm:flex flex-col gap-5">
           <div className="card">
             <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-4">
@@ -307,7 +272,6 @@ function handleCall(type: 'voice' | 'video') {
                 { label: 'Location',     value: pro.city },
                 { label: 'Rating',       value: `${pro.rating?.toFixed(1)} / 5.0` },
                 { label: 'Reviews',      value: String(pro.reviewCount) },
-                { label: 'Tier',        value: pro.verificationTier ? pro.verificationTier.charAt(0).toUpperCase() + pro.verificationTier.slice(1) : 'Basic' },
                 { label: 'Availability', value: 'Available now' },
               ].map((r) => (
                 <div key={r.label} className="flex justify-between">
@@ -323,7 +287,7 @@ function handleCall(type: 'voice' | 'video') {
               disabled={booked}
               className="btn-primary w-full py-3 justify-center"
             >
-              {booked ? 'Requested ✓' : `Book ${pro.firstName}`}
+              {booked ? 'Requested \u2713' : `Book ${pro.firstName}`}
             </button>
 
             <div className="grid grid-cols-2 gap-2 mt-2">
@@ -392,22 +356,15 @@ function handleCall(type: 'voice' | 'video') {
             </button>
           </div>
 
-          {pro.verificationTier && pro.verificationTier !== 'basic' && (
-            <div className={`card-sm ${pro.verificationTier === 'premium' ? 'bg-amber-50 border-amber-300' : 'bg-brand-light border-brand-primary/20'}`}>
-              <p className={`text-sm font-medium ${pro.verificationTier === 'premium' ? 'text-amber-700' : 'text-brand-active'} mb-1`}>
-                {pro.verificationTier === 'premium' ? '⭐ Premium Vendor' : '✓ Verified Vendor'}
-              </p>
-              <p className={`text-xs ${pro.verificationTier === 'premium' ? 'text-amber-600/70' : 'text-brand-active/70'}`}>
-                {pro.verificationTier === 'premium' 
-                  ? 'Top-rated, priority support, and featured listings' 
-                  : 'Identity and credentials verified by Anywork365'}
-              </p>
+          {pro.isVerified && (
+            <div className="card-sm bg-brand-light border-brand-primary/20">
+              <p className="text-sm font-medium text-brand-active mb-1">\u2713 Verified Vendor</p>
+              <p className="text-xs text-brand-active/70">Identity and credentials verified by Anywork365</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Book Modal */}
       <Modal open={bookOpen} onClose={() => setBookOpen(false)} title={`Book ${pro.firstName} ${pro.lastName}`}>
         <form onSubmit={handleBook}>
           <div className="form-group">
@@ -421,7 +378,7 @@ function handleCall(type: 'voice' | 'video') {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="form-group">
-              <label className="label">Your Budget (₦)</label>
+              <label className="label">Your Budget (\u20A6)</label>
               <input type="number" inputMode="numeric" className="input-field" min={1000} placeholder="50000" />
             </div>
             <div className="form-group">

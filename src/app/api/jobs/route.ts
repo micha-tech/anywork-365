@@ -1,34 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MOCK_JOBS } from '@/lib/mockData'
-import { jobPostSchema } from '@/lib/validators/job'
+import { listVacancies, createVacancy, getCompanyByUid } from '@/lib/queries'
 import { getSession } from '@/lib/auth'
-import type { ApiResponse, Job, JobCategory } from '@/types'
+import { jobPostSchema } from '@/lib/validators/job'
+import type { ApiResponse, Job } from '@/types'
 
-// In-memory store (replace with DB in production)
-const jobStore: Job[] = [...MOCK_JOBS]
-
-// ─── GET /api/jobs ────────────────────────────────────────────────────────────
+export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const search   = searchParams.get('search')?.toLowerCase()
-  const category = searchParams.get('category')
-  const city     = searchParams.get('city')
+  const search = searchParams.get('search')
+  const location = searchParams.get('city')
+  const job_type = searchParams.get('type')
+  const limit = parseInt(searchParams.get('limit') || '0')
 
-  let jobs = [...jobStore]
+  const rows = await listVacancies({ search: search || undefined, location: location || undefined, job_type: job_type || undefined })
+  const sliced = limit > 0 ? rows.slice(0, limit) : rows
 
-  if (search) {
-    jobs = jobs.filter(
-      (j) =>
-        j.title.toLowerCase().includes(search) ||
-        j.description.toLowerCase().includes(search)
-    )
-  }
-  if (category) jobs = jobs.filter((j) => j.category === category)
-  if (city)     jobs = jobs.filter((j) => j.city === city)
-
-  // Sort newest first
-  jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const jobs: Job[] = sliced.map((r) => ({
+    id: String(r.vacancy_id),
+    title: r.vacancy_title,
+    description: r.job_description,
+    category: 'Professional services' as Job['category'],
+    budget: 0,
+    city: r.vacancy_location,
+    status: r.closed ? 'completed' as Job['status'] : 'open' as Job['status'],
+    timeline: 'flexible',
+    posterId: '',
+    posterName: '',
+    businessName: '',
+    businessAddress: '',
+    jobType: r.work_type === 'Remote' ? 'contract' : 'full-time',
+    closingDate: r.closing_date || '',
+    applicationCount: 0,
+    createdAt: r.date_created,
+  }))
 
   return NextResponse.json<ApiResponse<Job[]>>(
     { success: true, data: jobs },
@@ -36,11 +41,8 @@ export async function GET(req: NextRequest) {
   )
 }
 
-// ─── POST /api/jobs ───────────────────────────────────────────────────────────
-
 export async function POST(req: NextRequest) {
   try {
-    // Auth check
     const session = await getSession()
     if (!session) {
       return NextResponse.json<ApiResponse<null>>(
@@ -50,7 +52,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-
     const parsed = jobPostSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json<ApiResponse<null>>(
@@ -59,23 +60,38 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const companies = await getCompanyByUid(session.id)
+    const companyId = companies.length > 0 ? companies[0].company_id : 0
+
+    const insertId = await createVacancy({
+      company_id: companyId,
+      vacancy_title: parsed.data.title,
+      vacancy_location: parsed.data.city,
+      job_type: parsed.data.jobType || 'Full-Time',
+      work_type: 'On-Site',
+      required_skills: parsed.data.description || '',
+      job_description: parsed.data.description,
+      closing_date: parsed.data.closingDate || undefined,
+    })
+
     const newJob: Job = {
-      id: `job-${Date.now()}`,
-      ...parsed.data,
-      category: parsed.data.category as JobCategory,
+      id: String(insertId),
+      title: parsed.data.title,
+      description: parsed.data.description,
+      category: parsed.data.category as Job['category'],
+      budget: parsed.data.budget,
+      city: parsed.data.city,
       status: 'open',
+      timeline: parsed.data.timeline || 'flexible',
       posterId: session.id,
       posterName: `${session.firstName} ${session.lastName}`,
       businessName: parsed.data.businessName || '',
       businessAddress: parsed.data.businessAddress || '',
-      jobType: parsed.data.jobType || 'full-time',
+      jobType: (parsed.data.jobType || 'full-time') as Job['jobType'],
       closingDate: parsed.data.closingDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       applicationCount: 0,
       createdAt: new Date().toISOString(),
     }
-
-    // ── In production: await db.job.create({ data: newJob }) ──────────
-    jobStore.unshift(newJob)
 
     return NextResponse.json<ApiResponse<Job>>(
       { success: true, data: newJob, message: 'Job posted successfully' },

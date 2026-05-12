@@ -1,8 +1,39 @@
 import Link from 'next/link'
-import { MOCK_JOBS } from '@/lib/mockData'
+import { listVacancies } from '@/lib/queries'
 import { JobCard } from '@/components/forms/JobCard'
+import type { Job } from '@/types'
 
-export default function MyJobsPage() {
+export const dynamic = 'force-dynamic'
+
+function vacancyToJob(v: Awaited<ReturnType<typeof listVacancies>>[number]): Job {
+  return {
+    id: String(v.vacancy_id),
+    title: v.vacancy_title,
+    description: v.job_description,
+    category: 'Professional services' as Job['category'],
+    budget: 0,
+    city: v.vacancy_location,
+    status: v.closed ? ('completed' as Job['status']) : ('open' as Job['status']),
+    timeline: 'flexible',
+    posterId: '',
+    posterName: '',
+    businessName: '',
+    businessAddress: '',
+    jobType: v.work_type === 'Remote' ? 'contract' : 'full-time',
+    closingDate: v.closing_date || '',
+    applicationCount: 0,
+    createdAt: v.date_created,
+  }
+}
+
+export default async function MyJobsPage() {
+  const vacancies = await listVacancies()
+  const jobs = vacancies.map(vacancyToJob)
+
+  const activeJobs = jobs.filter((j) => j.status === 'open')
+  const pendingJobs: Job[] = []
+  const completedJobs = jobs.filter((j) => j.status === 'completed')
+
   return (
     <>
       <div className="flex items-center justify-between gap-4 mb-5 sm:mb-7">
@@ -13,9 +44,12 @@ export default function MyJobsPage() {
         <Link href="/dashboard/post-job" className="btn-primary text-sm flex-shrink-0">+ Post Job</Link>
       </div>
 
-      {/* Tabs — horizontally scrollable on mobile */}
       <div className="flex gap-0 border-b border-ui-border mb-5 overflow-x-auto scrollbar-none">
-        {['Active (3)', 'Pending (1)', 'Completed (20)'].map((tab, i) => (
+        {[
+          `Active (${activeJobs.length})`,
+          `Pending (${pendingJobs.length})`,
+          `Completed (${completedJobs.length})`,
+        ].map((tab, i) => (
           <button
             key={tab}
             className={`px-4 sm:px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
@@ -30,7 +64,9 @@ export default function MyJobsPage() {
       </div>
 
       <div className="flex flex-col gap-3 sm:gap-4">
-        {MOCK_JOBS.map((job) => (
+        {jobs.length === 0 ? (
+          <p className="text-sm text-text-secondary py-8 text-center">No jobs posted yet</p>
+        ) : jobs.map((job) => (
           <JobCard key={job.id} job={job} showApply={false} />
         ))}
       </div>
